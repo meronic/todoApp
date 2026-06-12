@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -28,4 +29,6 @@ public class Todo {
     private TodoGroup groupType = TodoGroup.UNCATEGORIZED;
 
     private LocalDate dueDate;
+
+    private LocalDateTime completedAt;
 }

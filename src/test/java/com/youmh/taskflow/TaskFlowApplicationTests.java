@@ -52,7 +52,8 @@ class TaskFlowApplicationTests {
                 .andExpect(jsonPath("$.title").value("Vue connection"))
                 .andExpect(jsonPath("$.completed").value(false))
                 .andExpect(jsonPath("$.groupType").value("UNCATEGORIZED"))
-                .andExpect(jsonPath("$.dueDate").value(nullValue()));
+                .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                .andExpect(jsonPath("$.completedAt").value(nullValue()));
 
         mockMvc.perform(get("/api/todos"))
                 .andExpect(status().isOk())
@@ -147,7 +148,13 @@ class TaskFlowApplicationTests {
 
         mockMvc.perform(put("/api/todos/{id}/toggle", todo.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true));
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.completedAt").isNotEmpty());
+
+        mockMvc.perform(put("/api/todos/{id}/toggle", todo.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(false))
+                .andExpect(jsonPath("$.completedAt").value(nullValue()));
     }
 
     @Test

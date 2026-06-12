@@ -7,6 +7,7 @@ import com.youmh.taskflow.repository.TodoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -61,7 +62,9 @@ public class TodoService {
 
     public Todo toggleCompleted(Long id) {
         Todo todo = findById(id);
-        todo.setCompleted(!todo.isCompleted());
+        boolean completed = !todo.isCompleted();
+        todo.setCompleted(completed);
+        todo.setCompletedAt(completed ? LocalDateTime.now() : null);
 
         return todoRepository.save(todo);
     }

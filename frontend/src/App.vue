@@ -42,6 +42,7 @@ const quickAddInput = ref(null)
 const quickAddSaving = ref(false)
 const recentlyCompletedTodoId = ref(null)
 const selectedYearDate = ref(null)
+const completedHistoryGroupFilter = ref('ALL')
 const themeMode = ref(savedTheme === 'light' ? 'light' : 'dark')
 let dragPreviewElement = null
 
@@ -64,6 +65,25 @@ const searchedTodos = computed(() => {
 const openTodoCount = computed(() => todos.value.filter((todo) => !todo.completed).length)
 const completedTodoCount = computed(() => todos.value.filter((todo) => todo.completed).length)
 const scheduledTodoCount = computed(() => todos.value.filter((todo) => todo.dueDate).length)
+const completedHistoryFilterOptions = computed(() => {
+  const completedTodos = todos.value.filter((todo) => todo.completed && todo.completedAt)
+
+  return [
+    {
+      value: 'ALL',
+      label: '전체 완료',
+      shortLabel: '전체',
+      theme: 'all',
+      icon: '✓',
+      count: completedTodos.length
+    },
+    ...GROUPS.map((group) => ({
+      ...group,
+      icon: group.shortLabel.slice(0, 1),
+      count: completedTodos.filter((todo) => todo.groupType === group.value).length
+    }))
+  ]
+})
 const priorityStats = computed(() => {
   return GROUPS.map((group) => {
     const groupTodos = todos.value.filter((todo) => todo.groupType === group.value)
@@ -85,7 +105,36 @@ const workspaceTitle = computed(() => {
     return '캘린더'
   }
 
+  if (viewMode.value === 'completed') {
+    return '완료 이력'
+  }
+
   return groupFilter.value === 'ALL' ? '전체 할 일' : groupLabel(groupFilter.value)
+})
+const completedHistoryGroups = computed(() => {
+  const completedTodos = searchedTodos.value
+    .filter((todo) => todo.completed && todo.completedAt)
+    .filter((todo) => completedHistoryGroupFilter.value === 'ALL' || todo.groupType === completedHistoryGroupFilter.value)
+    .slice()
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
+
+  return completedTodos.reduce((groups, todo) => {
+    const date = todo.completedAt.slice(0, 10)
+    const group = groups.find((item) => item.date === date)
+
+    if (group) {
+      group.todos.push(todo)
+      return groups
+    }
+
+    groups.push({
+      date,
+      label: formatCompletedDateLabel(date),
+      todos: [todo]
+    })
+
+    return groups
+  }, [])
 })
 const calendarTitle = computed(() => {
   const year = currentMonth.value.getFullYear()
@@ -359,6 +408,50 @@ function displayDueDate(dueDate) {
   return dueDate.slice(5).replace('-', '/')
 }
 
+function formatCompletedDateLabel(dateValue) {
+  const date = new Date(`${dateValue}T00:00:00`)
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${weekdays[date.getDay()]}`
+}
+
+function formatCompletedTime(completedAt) {
+  if (!completedAt) {
+    return '-'
+  }
+
+  const date = new Date(completedAt)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+
+  return `${year}/${month}/${day} ${hour}:${minute}`
+}
+
+function completionStatus(todo) {
+  if (!todo.dueDate) {
+    return { label: '일정 없음', tone: 'none' }
+  }
+
+  if (!todo.completedAt) {
+    return { label: '완료 시각 없음', tone: 'none' }
+  }
+
+  const completedDate = todo.completedAt.slice(0, 10)
+
+  if (completedDate < todo.dueDate) {
+    return { label: '미리 완료', tone: 'early' }
+  }
+
+  if (completedDate > todo.dueDate) {
+    return { label: '기한 초과 완료', tone: 'late' }
+  }
+
+  return { label: '기한 내 완료', tone: 'on-time' }
+}
+
 function yearDayDensityClass(day) {
   if (day.count >= 4) {
     return 'density-high'
@@ -466,6 +559,11 @@ function showGroupBoard() {
 
 function showCalendar() {
   viewMode.value = 'calendar'
+  groupFilter.value = 'ALL'
+}
+
+function showCompleted() {
+  viewMode.value = 'completed'
   groupFilter.value = 'ALL'
 }
 
@@ -689,6 +787,10 @@ onMounted(() => {
           <span>캘린더</span>
           <strong>{{ scheduledTodoCount }}</strong>
         </button>
+        <button type="button" :class="{ active: viewMode === 'completed' }" @click="showCompleted">
+          <span>완료</span>
+          <strong>{{ completedTodoCount }}</strong>
+        </button>
       </nav>
 
       <section class="theme-switcher" aria-label="테마 선택">
@@ -760,7 +862,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <form v-if="viewMode !== 'calendar'" class="add-form" @submit.prevent="createTodo">
+      <form v-if="viewMode !== 'calendar' && viewMode !== 'completed'" class="add-form" @submit.prevent="createTodo">
         <input v-model="title" type="text" placeholder="task add ..." />
         <button type="submit">ADD</button>
       </form>
@@ -1077,6 +1179,92 @@ onMounted(() => {
             </div>
           </template>
         </section>
+      </div>
+
+      <div v-else-if="viewMode === 'completed'" class="completed-history">
+        <aside class="completed-history-filter">
+          <section class="completed-filter-section">
+            <h3>리스트</h3>
+            <button
+              v-for="option in completedHistoryFilterOptions"
+              :key="option.value"
+              type="button"
+              class="completed-filter-item"
+              :class="[
+                option.value === 'ALL' ? 'theme-all' : `theme-${option.theme}`,
+                { active: completedHistoryGroupFilter === option.value }
+              ]"
+              @click="completedHistoryGroupFilter = option.value"
+            >
+              <span class="completed-filter-icon">{{ option.icon }}</span>
+              <span class="completed-filter-label">{{ option.label }}</span>
+              <span class="completed-filter-dot" aria-hidden="true"></span>
+              <strong>{{ option.count }}</strong>
+            </button>
+          </section>
+        </aside>
+
+        <div class="completed-history-content">
+          <p v-if="completedHistoryGroups.length === 0" class="empty-list">
+            {{ searchTerm ? '검색 결과가 없습니다.' : '아직 완료한 할 일이 없습니다.' }}
+          </p>
+
+          <template v-else>
+            <section
+              v-for="historyGroup in completedHistoryGroups"
+              :key="historyGroup.date"
+              class="completed-history-group"
+            >
+              <header class="completed-history-date">
+                <span>{{ historyGroup.label }}</span>
+                <strong>{{ historyGroup.todos.length }}</strong>
+              </header>
+
+              <ul class="completed-history-list">
+                <li
+                  v-for="todo in historyGroup.todos"
+                  :key="todo.id"
+                  class="completed-history-item"
+                  :class="`theme-${groupTheme(todo.groupType)}`"
+                >
+                  <button
+                    type="button"
+                    class="check-hit-area"
+                    aria-label="완료 해제"
+                    @click.stop="toggleTodo(todo)"
+                  >
+                    <span class="check-button checked">
+                      <span class="check-mark">✓</span>
+                    </span>
+                  </button>
+
+                  <div class="completed-history-main">
+                    <strong>{{ todo.title }}</strong>
+                  </div>
+
+                  <div class="completed-history-meta">
+                    <span class="group-badge" :class="`theme-${groupTheme(todo.groupType)}`">
+                      {{ groupLabel(todo.groupType) }}
+                    </span>
+                    <span v-if="todo.dueDate" class="date-badge">일정 {{ displayDueDate(todo.dueDate) }}</span>
+                    <span v-else class="date-badge muted">일정 없음</span>
+                    <span
+                      class="completion-status"
+                      :class="`tone-${completionStatus(todo).tone}`"
+                    >
+                      {{ completionStatus(todo).label }}
+                    </span>
+                  </div>
+
+                  <div class="completed-history-time">
+                    <span>완료 시간 :</span>
+                    <strong>{{ formatCompletedTime(todo.completedAt) }}</strong>
+                  </div>
+                </li>
+              </ul>
+            </section>
+          </template>
+        </div>
       </div>
 
       <div v-else-if="viewMode === 'group'" class="group-board" :class="{ dragging: isDragging }">
