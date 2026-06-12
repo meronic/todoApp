@@ -143,6 +143,24 @@ class TaskFlowApplicationTests {
     }
 
     @Test
+    void todoApiCanUpdateTodoComment() throws Exception {
+        Todo todo = saveTodo("comment target", true);
+
+        mockMvc.perform(put("/api/todos/{id}/comment", todo.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"done after checking logs\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(todo.getId()))
+                .andExpect(jsonPath("$.comment").value("done after checking logs"));
+
+        mockMvc.perform(put("/api/todos/{id}/comment", todo.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"   \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comment").value(nullValue()));
+    }
+
+    @Test
     void todoApiCanToggleTodo() throws Exception {
         Todo todo = saveTodo("todo", false);
 

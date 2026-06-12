@@ -31,4 +31,6 @@ public class Todo {
     private LocalDate dueDate;
 
     private LocalDateTime completedAt;
+
+    private String comment;
 }

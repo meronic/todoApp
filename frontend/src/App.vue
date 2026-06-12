@@ -725,6 +725,23 @@ async function clearTodoDueDate(todo) {
   }
 }
 
+async function updateTodoComment(todo) {
+  const response = await fetch(`${API_BASE_URL}/${todo.id}/comment`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      comment: todo.comment || ''
+    })
+  })
+
+  if (response.ok) {
+    const updatedTodo = await response.json()
+    replaceTodo(updatedTodo)
+  }
+}
+
 async function toggleTodo(todo) {
   const response = await fetch(`${API_BASE_URL}/${todo.id}/toggle`, {
     method: 'PUT'
@@ -1227,39 +1244,52 @@ onMounted(() => {
                   class="completed-history-item"
                   :class="`theme-${groupTheme(todo.groupType)}`"
                 >
-                  <button
-                    type="button"
-                    class="check-hit-area"
-                    aria-label="완료 해제"
-                    @click.stop="toggleTodo(todo)"
-                  >
-                    <span class="check-button checked">
-                      <span class="check-mark">✓</span>
-                    </span>
-                  </button>
-
-                  <div class="completed-history-main">
-                    <strong>{{ todo.title }}</strong>
-                  </div>
-
-                  <div class="completed-history-meta">
-                    <span class="group-badge" :class="`theme-${groupTheme(todo.groupType)}`">
-                      {{ groupLabel(todo.groupType) }}
-                    </span>
-                    <span v-if="todo.dueDate" class="date-badge">일정 {{ displayDueDate(todo.dueDate) }}</span>
-                    <span v-else class="date-badge muted">일정 없음</span>
-                    <span
-                      class="completion-status"
-                      :class="`tone-${completionStatus(todo).tone}`"
+                  <div class="completed-history-task">
+                    <button
+                      type="button"
+                      class="check-hit-area"
+                      aria-label="완료 해제"
+                      @click.stop="toggleTodo(todo)"
                     >
-                      {{ completionStatus(todo).label }}
-                    </span>
+                      <span class="check-button checked">
+                        <span class="check-mark">✓</span>
+                      </span>
+                    </button>
+
+                    <div class="completed-history-main">
+                      <strong>{{ todo.title }}</strong>
+                    </div>
+
+                    <div class="completed-history-meta">
+                      <span class="group-badge" :class="`theme-${groupTheme(todo.groupType)}`">
+                        {{ groupLabel(todo.groupType) }}
+                      </span>
+                      <span v-if="todo.dueDate" class="date-badge">일정 {{ displayDueDate(todo.dueDate) }}</span>
+                      <span v-else class="date-badge muted">일정 없음</span>
+                      <span
+                        class="completion-status"
+                        :class="`tone-${completionStatus(todo).tone}`"
+                      >
+                        {{ completionStatus(todo).label }}
+                      </span>
+                    </div>
+
+                    <div class="completed-history-time">
+                      <span>완료 시간 :</span>
+                      <strong>{{ formatCompletedTime(todo.completedAt) }}</strong>
+                    </div>
                   </div>
 
-                  <div class="completed-history-time">
-                    <span>완료 시간 :</span>
-                    <strong>{{ formatCompletedTime(todo.completedAt) }}</strong>
-                  </div>
+                  <label class="completed-history-comment" @click.stop>
+                    <span>코멘트</span>
+                    <input
+                      v-model="todo.comment"
+                      type="text"
+                      placeholder="완료 메모 입력"
+                      @blur="updateTodoComment(todo)"
+                      @keydown.enter.prevent="$event.target.blur()"
+                    />
+                  </label>
                 </li>
               </ul>
             </section>

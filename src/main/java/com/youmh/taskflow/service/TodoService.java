@@ -60,6 +60,13 @@ public class TodoService {
         return todoRepository.save(todo);
     }
 
+    public Todo updateComment(Long id, String comment) {
+        Todo todo = findById(id);
+        todo.setComment(normalizeComment(comment));
+
+        return todoRepository.save(todo);
+    }
+
     public Todo toggleCompleted(Long id) {
         Todo todo = findById(id);
         boolean completed = !todo.isCompleted();
@@ -85,5 +92,13 @@ public class TodoService {
         }
 
         return title.trim();
+    }
+
+    private String normalizeComment(String comment) {
+        if (comment == null || comment.trim().isEmpty()) {
+            return null;
+        }
+
+        return comment.trim();
     }
 }

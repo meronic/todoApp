@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/todos")
@@ -56,6 +57,11 @@ public class TodoApiController {
     @DeleteMapping("/{id}/due-date")
     public Todo clearDueDate(@PathVariable Long id) {
         return todoService.clearDueDate(id);
+    }
+
+    @PutMapping("/{id}/comment")
+    public Todo updateComment(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        return todoService.updateComment(id, request.get("comment"));
     }
 
     @PutMapping("/{id}/toggle")
