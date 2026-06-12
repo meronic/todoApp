@@ -1,14 +1,20 @@
-<script setup>
+﻿<script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/todos'
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
 const GROUPS = [
-  { value: 'TODAY', label: '오늘 바로 할 일', shortLabel: '오늘', theme: 'red' },
-  { value: 'NEXT', label: '그 다음 할 일', shortLabel: '다음', theme: 'blue' },
-  { value: 'LATER', label: '급하지 않은 일', shortLabel: '나중', theme: 'yellow' },
+  { value: 'TODAY', label: '즉시 처리', shortLabel: '즉시', theme: 'red' },
+  { value: 'NEXT', label: '중요한 일', shortLabel: '중요', theme: 'blue' },
+  { value: 'LATER', label: '계획 업무', shortLabel: '계획', theme: 'yellow' },
   { value: 'UNCATEGORIZED', label: '미분류', shortLabel: '미분류', theme: 'green' }
+]
+const DATE_BUCKETS = [
+  { value: 'OVERDUE', label: '기한 초과' },
+  { value: 'TODAY', label: '오늘' },
+  { value: 'UPCOMING', label: '예정' },
+  { value: 'NONE', label: '날짜 없음' }
 ]
 
 const todos = ref([])
@@ -25,6 +31,13 @@ const dragOverGroup = ref(null)
 const dragOverDate = ref(null)
 const isDragging = ref(false)
 const currentMonth = ref(startOfMonth(new Date()))
+const collapsedCompletedGroups = ref({})
+const quickAddDate = ref(null)
+const quickAddTitle = ref('')
+const quickAddInput = ref(null)
+const quickAddSaving = ref(false)
+const recentlyCompletedTodoId = ref(null)
+let dragPreviewElement = null
 
 const visibleTodos = computed(() => {
   if (groupFilter.value === 'ALL') {
@@ -36,6 +49,13 @@ const visibleTodos = computed(() => {
 
 const openTodoCount = computed(() => todos.value.filter((todo) => !todo.completed).length)
 const completedTodoCount = computed(() => todos.value.filter((todo) => todo.completed).length)
+const workspaceTitle = computed(() => {
+  if (viewMode.value === 'group') {
+    return '그룹별 할 일'
+  }
+
+  return groupFilter.value === 'ALL' ? '전체 할 일' : groupLabel(groupFilter.value)
+})
 const calendarTitle = computed(() => {
   const year = currentMonth.value.getFullYear()
   const month = currentMonth.value.getMonth() + 1
@@ -101,7 +121,18 @@ async function createTodo() {
   })
 
   if (response.ok) {
-    const createdTodo = await response.json()
+    let createdTodo = await response.json()
+
+    if (viewMode.value === 'all' && groupFilter.value !== 'ALL') {
+      const groupResponse = await fetch(`${API_BASE_URL}/${createdTodo.id}/group?groupType=${groupFilter.value}`, {
+        method: 'PUT'
+      })
+
+      if (groupResponse.ok) {
+        createdTodo = await groupResponse.json()
+      }
+    }
+
     todos.value = [createdTodo, ...todos.value]
     title.value = ''
   }
@@ -140,6 +171,16 @@ function focusEditInput() {
   element?.focus()
 }
 
+function setQuickAddInput(element) {
+  quickAddInput.value = element
+
+  if (element) {
+    requestAnimationFrame(() => {
+      element.focus()
+    })
+  }
+}
+
 function replaceTodo(updatedTodo) {
   todos.value = todos.value.map((todo) => {
     if (todo.id === updatedTodo.id) {
@@ -152,6 +193,18 @@ function replaceTodo(updatedTodo) {
 
 function todosByGroup(groupType) {
   return todos.value.filter((todo) => todo.groupType === groupType)
+}
+
+function activeTodosByGroup(groupType) {
+  return todosByGroup(groupType).filter((todo) => !todo.completed)
+}
+
+function completedTodosByGroup(groupType) {
+  return todosByGroup(groupType).filter((todo) => todo.completed)
+}
+
+function activeTodosByGroupAndDateBucket(groupType, bucket) {
+  return activeTodosByGroup(groupType).filter((todo) => dateBucketOf(todo) === bucket)
 }
 
 function todosByDate(dueDate) {
@@ -172,6 +225,35 @@ function groupLabel(groupType) {
 
 function groupTheme(groupType) {
   return groupByType(groupType).theme
+}
+
+function isCompletedSectionCollapsed(groupType) {
+  return collapsedCompletedGroups.value[groupType] === true
+}
+
+function toggleCompletedSection(groupType) {
+  collapsedCompletedGroups.value = {
+    ...collapsedCompletedGroups.value,
+    [groupType]: !isCompletedSectionCollapsed(groupType)
+  }
+}
+
+function dateBucketOf(todo) {
+  const today = formatDateValue(new Date())
+
+  if (!todo.dueDate) {
+    return 'NONE'
+  }
+
+  if (todo.dueDate < today) {
+    return 'OVERDUE'
+  }
+
+  if (todo.dueDate === today) {
+    return 'TODAY'
+  }
+
+  return 'UPCOMING'
 }
 
 function startOfMonth(date) {
@@ -210,6 +292,70 @@ function displayDueDate(dueDate) {
   return dueDate.slice(5).replace('-', '/')
 }
 
+async function openQuickAdd(dateValue) {
+  if (isDragging.value) {
+    return
+  }
+
+  quickAddDate.value = dateValue
+  quickAddTitle.value = ''
+  await nextTick()
+  quickAddInput.value?.focus()
+}
+
+function cancelQuickAdd() {
+  quickAddDate.value = null
+  quickAddTitle.value = ''
+}
+
+async function finishQuickAdd() {
+  if (quickAddTitle.value.trim()) {
+    await createTodoForDate()
+    return
+  }
+
+  cancelQuickAdd()
+}
+
+async function createTodoForDate() {
+  const trimmedTitle = quickAddTitle.value.trim()
+
+  if (!trimmedTitle || !quickAddDate.value || quickAddSaving.value) {
+    return
+  }
+
+  quickAddSaving.value = true
+
+  const response = await fetch(API_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      title: trimmedTitle
+    })
+  })
+
+  if (!response.ok) {
+    quickAddSaving.value = false
+    return
+  }
+
+  const createdTodo = await response.json()
+  const dueDate = quickAddDate.value
+  const dueDateResponse = await fetch(`${API_BASE_URL}/${createdTodo.id}/due-date?dueDate=${dueDate}`, {
+    method: 'PUT'
+  })
+
+  if (dueDateResponse.ok) {
+    const updatedTodo = await dueDateResponse.json()
+    todos.value = [updatedTodo, ...todos.value]
+    cancelQuickAdd()
+  }
+
+  quickAddSaving.value = false
+}
+
 function showAll(filter = 'ALL') {
   viewMode.value = 'all'
   groupFilter.value = filter
@@ -225,16 +371,47 @@ function startDragging(todo, event) {
   isDragging.value = true
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', String(todo.id))
+  setDragPreview(todo, event)
 }
 
 function finishDragging() {
   draggedTodoId.value = null
   dragOverGroup.value = null
   dragOverDate.value = null
+  removeDragPreview()
 
   setTimeout(() => {
     isDragging.value = false
   }, 0)
+}
+
+function setDragPreview(todo, event) {
+  removeDragPreview()
+
+  const preview = document.createElement('div')
+  preview.className = `drag-preview theme-${groupTheme(todo.groupType)}`
+  preview.innerHTML = `
+    <span>${escapeHtml(todo.title)}</span>
+    <strong>${escapeHtml(groupLabel(todo.groupType))}</strong>
+  `
+
+  document.body.appendChild(preview)
+  dragPreviewElement = preview
+  event.dataTransfer.setDragImage(preview, 18, 18)
+}
+
+function removeDragPreview() {
+  dragPreviewElement?.remove()
+  dragPreviewElement = null
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }
 
 async function dropTodoToGroup(groupType) {
@@ -293,6 +470,16 @@ async function updateTodoGroup(todo, groupType) {
   if (response.ok) {
     const updatedTodo = await response.json()
     replaceTodo(updatedTodo)
+
+    if (updatedTodo.completed) {
+      recentlyCompletedTodoId.value = updatedTodo.id
+
+      setTimeout(() => {
+        if (recentlyCompletedTodoId.value === updatedTodo.id) {
+          recentlyCompletedTodoId.value = null
+        }
+      }, 900)
+    }
   }
 }
 
@@ -345,12 +532,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="app-shell" @click="editingTodoId !== null && cancelEditing()">
+  <main class="app-shell" @click="editingTodoId !== null && cancelEditing(); quickAddDate !== null && finishQuickAdd()">
     <aside class="sidebar" @click.stop>
-      <div class="brand">
+      <button type="button" class="brand" @click="showAll()">
         <p>Vue3 + Spring Boot</p>
         <h1>TaskFlow</h1>
-      </div>
+      </button>
 
       <nav class="side-nav">
         <button type="button" :class="{ active: viewMode === 'all' }" @click="showAll()">
@@ -358,22 +545,13 @@ onMounted(() => {
           <strong>{{ todos.length }}</strong>
         </button>
         <button type="button" :class="{ active: viewMode === 'group' }" @click="showGroupBoard">
-          <span>그룹 보드</span>
+          <span>아이젠하워 매트릭스</span>
           <strong>4</strong>
         </button>
       </nav>
 
       <section class="side-section">
         <h2>그룹 필터</h2>
-        <button
-          type="button"
-          class="group-filter"
-          :class="{ active: viewMode === 'all' && groupFilter === 'ALL' }"
-          @click="showAll('ALL')"
-        >
-          <span>전체 그룹</span>
-          <strong>{{ todos.length }}</strong>
-        </button>
         <button
           v-for="group in GROUPS"
           :key="group.value"
@@ -403,10 +581,10 @@ onMounted(() => {
       <header class="workspace-header">
         <div>
           <p class="eyebrow">{{ viewMode === 'all' ? 'List View' : 'Board View' }}</p>
-          <h2>{{ viewMode === 'all' ? '전체 할 일' : '그룹별 할 일' }}</h2>
+          <h2>{{ workspaceTitle }}</h2>
         </div>
         <div v-if="viewMode === 'all'" class="active-filter">
-          {{ groupFilter === 'ALL' ? '전체 그룹' : groupLabel(groupFilter) }}
+          {{ groupFilter === 'ALL' ? '전체 그룹' : `${visibleTodos.length}개` }}
         </div>
       </header>
 
@@ -435,6 +613,7 @@ onMounted(() => {
               {
                 editable: editingTodoId !== todo.id,
                 completedItem: todo.completed,
+                completedFlash: recentlyCompletedTodoId === todo.id,
                 dragging: draggedTodoId === todo.id
               }
             ]"
@@ -497,16 +676,19 @@ onMounted(() => {
           </div>
 
           <div class="calendar-grid month-grid">
-            <button
+            <div
               v-for="day in calendarDays"
               :key="day.value"
-              type="button"
               class="calendar-day"
+              role="button"
+              tabindex="0"
               :class="{
                 outside: !day.inCurrentMonth,
                 today: day.isToday,
                 dragOver: dragOverDate === day.value
               }"
+              @click.stop="openQuickAdd(day.value)"
+              @keydown.space.prevent="openQuickAdd(day.value)"
               @dragover.prevent="dragOverDate = day.value"
               @dragleave="dragOverDate === day.value && (dragOverDate = null)"
               @drop.prevent="dropTodoToDate(day.value)"
@@ -536,12 +718,27 @@ onMounted(() => {
                   +{{ day.count - day.todos.length }}
                 </span>
               </div>
-            </button>
+              <form
+                v-if="quickAddDate === day.value"
+                class="calendar-quick-add"
+                @submit.prevent.stop="createTodoForDate"
+                @click.stop
+              >
+                <input
+                  :ref="setQuickAddInput"
+                  v-model="quickAddTitle"
+                  type="text"
+                  placeholder="할 일 추가"
+                  @blur="finishQuickAdd"
+                  @keydown.esc.prevent="cancelQuickAdd"
+                />
+              </form>
+            </div>
           </div>
         </aside>
       </div>
 
-      <div v-else class="group-board">
+      <div v-else class="group-board" :class="{ dragging: isDragging }">
         <section
           v-for="group in GROUPS"
           :key="group.value"
@@ -555,59 +752,143 @@ onMounted(() => {
             <h2>{{ group.label }}</h2>
             <span>{{ todosByGroup(group.value).length }}</span>
           </header>
-
           <p v-if="todosByGroup(group.value).length === 0" class="group-empty">
             여기에 놓아 분류해보세요.
           </p>
 
-          <ul v-else class="todo-list">
-            <li
-              v-for="todo in todosByGroup(group.value)"
-              :key="todo.id"
-              class="todo-item draggable"
-              :class="{
-                editable: editingTodoId !== todo.id,
-                completedItem: todo.completed,
-                dragging: draggedTodoId === todo.id
-              }"
-              :draggable="editingTodoId !== todo.id"
-              @dragstart.stop="startDragging(todo, $event)"
-              @dragend="finishDragging"
-              @click.stop="handleTodoClick(todo)"
-            >
-              <template v-if="editingTodoId === todo.id">
-                <form class="edit-form" @submit.prevent="updateTodo(todo)" @click.stop>
-                  <input :ref="setEditInput" v-model="editingTitle" type="text" />
-                  <button type="submit">저장</button>
-                  <button type="button" class="secondary-button" @click="cancelEditing">취소</button>
-                </form>
-              </template>
+          <div v-else class="group-todo-area">
+            <section class="group-todo-section">
+              <header class="group-subheader">
+                <span>진행 중</span>
+                <strong>{{ activeTodosByGroup(group.value).length }}</strong>
+              </header>
 
-              <template v-else>
-                <div class="todo-content">
-                  <button
-                    type="button"
-                    class="check-hit-area"
-                    :aria-label="todo.completed ? '완료됨' : '완료로 변경'"
-                    @click.stop="toggleTodo(todo)"
-                  >
-                    <span class="check-button" :class="{ checked: todo.completed }">
-                      <span class="check-mark">✓</span>
-                    </span>
-                  </button>
-                  <span class="todo-title" :class="{ completed: todo.completed }">{{ todo.title }}</span>
-                </div>
-                <div class="todo-actions">
-                  <span v-if="todo.dueDate" class="date-badge">
-                    {{ displayDueDate(todo.dueDate) }}
-                  </span>
-                  <button type="button" class="delete-button icon-button" aria-label="삭제" title="삭제" @click.stop="deleteTodo(todo)">
-                    <span aria-hidden="true">×</span>
-                  </button>
-                </div>
-              </template>
-            </li>
-          </ul>
+              <p v-if="activeTodosByGroup(group.value).length === 0" class="group-empty compact">
+                진행 중인 할 일이 없습니다.
+              </p>
+
+              <div v-else class="date-bucket-list">
+                <section
+                  v-for="bucket in DATE_BUCKETS"
+                  :key="bucket.value"
+                  v-show="activeTodosByGroupAndDateBucket(group.value, bucket.value).length > 0"
+                  class="date-bucket"
+                  :class="`bucket-${bucket.value.toLowerCase()}`"
+                >
+                  <header class="date-bucket-header">
+                    <span>{{ bucket.label }}</span>
+                    <strong>{{ activeTodosByGroupAndDateBucket(group.value, bucket.value).length }}</strong>
+                  </header>
+
+                  <ul class="todo-list">
+                    <li
+                      v-for="todo in activeTodosByGroupAndDateBucket(group.value, bucket.value)"
+                      :key="todo.id"
+                      class="todo-item draggable"
+                      :class="{
+                        editable: editingTodoId !== todo.id,
+                        completedItem: todo.completed,
+                        completedFlash: recentlyCompletedTodoId === todo.id,
+                        dragging: draggedTodoId === todo.id
+                      }"
+                      :draggable="editingTodoId !== todo.id"
+                      @dragstart.stop="startDragging(todo, $event)"
+                      @dragend="finishDragging"
+                      @click.stop="handleTodoClick(todo)"
+                    >
+                      <template v-if="editingTodoId === todo.id">
+                        <form class="edit-form" @submit.prevent="updateTodo(todo)" @click.stop>
+                          <input :ref="setEditInput" v-model="editingTitle" type="text" />
+                          <button type="submit">저장</button>
+                          <button type="button" class="secondary-button" @click="cancelEditing">취소</button>
+                        </form>
+                      </template>
+
+                      <template v-else>
+                        <div class="todo-content">
+                          <button
+                            type="button"
+                            class="check-hit-area"
+                            :aria-label="todo.completed ? '완료됨' : '완료로 변경'"
+                            @click.stop="toggleTodo(todo)"
+                          >
+                            <span class="check-button" :class="{ checked: todo.completed }">
+                              <span class="check-mark">✓</span>
+                            </span>
+                          </button>
+                          <span class="todo-title" :class="{ completed: todo.completed }">{{ todo.title }}</span>
+                        </div>
+                        <div class="todo-actions">
+                          <span v-if="todo.dueDate" class="date-badge">
+                            {{ displayDueDate(todo.dueDate) }}
+                          </span>
+                          <button type="button" class="delete-button icon-button" aria-label="삭제" title="삭제" @click.stop="deleteTodo(todo)">
+                            <span aria-hidden="true">×</span>
+                          </button>
+                        </div>
+                      </template>
+                    </li>
+                  </ul>
+                </section>
+              </div>
+            </section>
+
+            <section v-if="completedTodosByGroup(group.value).length > 0" class="group-todo-section completed-section">
+              <button type="button" class="group-subheader toggle-subheader" @click.stop="toggleCompletedSection(group.value)">
+                <span>{{ isCompletedSectionCollapsed(group.value) ? '완료 보기' : '완료' }}</span>
+                <strong>{{ completedTodosByGroup(group.value).length }}</strong>
+              </button>
+
+              <ul v-if="!isCompletedSectionCollapsed(group.value)" class="todo-list completed-list">
+                <li
+                  v-for="todo in completedTodosByGroup(group.value)"
+                  :key="todo.id"
+                  class="todo-item draggable completedItem"
+                  :class="{
+                    editable: editingTodoId !== todo.id,
+                    completedFlash: recentlyCompletedTodoId === todo.id,
+                    dragging: draggedTodoId === todo.id
+                  }"
+                  :draggable="editingTodoId !== todo.id"
+                  @dragstart.stop="startDragging(todo, $event)"
+                  @dragend="finishDragging"
+                  @click.stop="handleTodoClick(todo)"
+                >
+                  <template v-if="editingTodoId === todo.id">
+                    <form class="edit-form" @submit.prevent="updateTodo(todo)" @click.stop>
+                      <input :ref="setEditInput" v-model="editingTitle" type="text" />
+                      <button type="submit">저장</button>
+                      <button type="button" class="secondary-button" @click="cancelEditing">취소</button>
+                    </form>
+                  </template>
+
+                  <template v-else>
+                    <div class="todo-content">
+                      <button
+                        type="button"
+                        class="check-hit-area"
+                        aria-label="완료 해제"
+                        @click.stop="toggleTodo(todo)"
+                      >
+                        <span class="check-button checked">
+                          <span class="check-mark">✓</span>
+                        </span>
+                      </button>
+                      <span class="todo-title completed">{{ todo.title }}</span>
+                    </div>
+                    <div class="todo-actions">
+                      <span v-if="todo.dueDate" class="date-badge">
+                        {{ displayDueDate(todo.dueDate) }}
+                      </span>
+                      <button type="button" class="delete-button icon-button" aria-label="삭제" title="삭제" @click.stop="deleteTodo(todo)">
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+                  </template>
+                </li>
+              </ul>
+            </section>
+          </div>
         </section>
       </div>
     </section>
