@@ -2,7 +2,9 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/todos'
+const THEME_STORAGE_KEY = 'taskflow-theme'
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+const savedTheme = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_STORAGE_KEY) : null
 
 const GROUPS = [
   { value: 'TODAY', label: '즉시 처리', shortLabel: '즉시', theme: 'red' },
@@ -32,12 +34,15 @@ const dragOverGroup = ref(null)
 const dragOverDate = ref(null)
 const isDragging = ref(false)
 const currentMonth = ref(startOfMonth(new Date()))
+const calendarViewMode = ref('month')
 const collapsedCompletedGroups = ref({})
 const quickAddDate = ref(null)
 const quickAddTitle = ref('')
 const quickAddInput = ref(null)
 const quickAddSaving = ref(false)
 const recentlyCompletedTodoId = ref(null)
+const selectedYearDate = ref(null)
+const themeMode = ref(savedTheme === 'light' ? 'light' : 'dark')
 let dragPreviewElement = null
 
 const visibleTodos = computed(() => {
@@ -58,6 +63,7 @@ const searchedTodos = computed(() => {
 })
 const openTodoCount = computed(() => todos.value.filter((todo) => !todo.completed).length)
 const completedTodoCount = computed(() => todos.value.filter((todo) => todo.completed).length)
+const scheduledTodoCount = computed(() => todos.value.filter((todo) => todo.dueDate).length)
 const priorityStats = computed(() => {
   return GROUPS.map((group) => {
     const groupTodos = todos.value.filter((todo) => todo.groupType === group.value)
@@ -75,16 +81,40 @@ const workspaceTitle = computed(() => {
     return '그룹별 할 일'
   }
 
+  if (viewMode.value === 'calendar') {
+    return '캘린더'
+  }
+
   return groupFilter.value === 'ALL' ? '전체 할 일' : groupLabel(groupFilter.value)
 })
 const calendarTitle = computed(() => {
   const year = currentMonth.value.getFullYear()
   const month = currentMonth.value.getMonth() + 1
 
-  return `${year}년 ${month}월`
+  return calendarViewMode.value === 'year' ? `${year}년` : `${year}년 ${month}월`
+})
+const yearCalendarMonths = computed(() => {
+  const year = currentMonth.value.getFullYear()
+
+  return Array.from({ length: 12 }, (_, monthIndex) => ({
+    value: monthIndex,
+    label: `${monthIndex + 1}월`,
+    days: buildCalendarDays(new Date(year, monthIndex, 1), 0)
+  }))
 })
 const calendarDays = computed(() => {
-  const monthStart = startOfMonth(currentMonth.value)
+  return buildCalendarDays(currentMonth.value, viewMode.value === 'calendar' ? 6 : 3)
+})
+const selectedYearTodos = computed(() => {
+  if (!selectedYearDate.value) {
+    return []
+  }
+
+  return todosByDate(selectedYearDate.value)
+})
+
+function buildCalendarDays(baseDate, todoLimit) {
+  const monthStart = startOfMonth(baseDate)
   const startDate = new Date(monthStart)
   startDate.setDate(monthStart.getDate() - monthStart.getDay())
 
@@ -100,10 +130,10 @@ const calendarDays = computed(() => {
       inCurrentMonth: date.getMonth() === monthStart.getMonth(),
       isToday: isSameDateValue(value, new Date()),
       count: dateTodos.length,
-      todos: dateTodos.slice(0, 3)
+      todos: dateTodos.slice(0, todoLimit)
     }
   })
-})
+}
 
 async function fetchTodos() {
   loading.value = true
@@ -289,6 +319,22 @@ function moveMonth(monthOffset) {
   )
 }
 
+function moveCalendar(offset) {
+  selectedYearDate.value = null
+
+  if (calendarViewMode.value === 'year') {
+    currentMonth.value = new Date(currentMonth.value.getFullYear() + offset, 0, 1)
+    return
+  }
+
+  moveMonth(offset)
+}
+
+function setCalendarViewMode(mode) {
+  calendarViewMode.value = mode
+  selectedYearDate.value = null
+}
+
 function formatDateValue(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -311,6 +357,26 @@ function displayDueDate(dueDate) {
   }
 
   return dueDate.slice(5).replace('-', '/')
+}
+
+function yearDayDensityClass(day) {
+  if (day.count >= 4) {
+    return 'density-high'
+  }
+
+  if (day.count >= 2) {
+    return 'density-medium'
+  }
+
+  if (day.count === 1) {
+    return 'density-low'
+  }
+
+  return 'density-empty'
+}
+
+function selectYearDate(day) {
+  selectedYearDate.value = day.count > 0 ? day.value : null
 }
 
 async function openQuickAdd(dateValue) {
@@ -369,7 +435,18 @@ async function createTodoForDate() {
   })
 
   if (dueDateResponse.ok) {
-    const updatedTodo = await dueDateResponse.json()
+    let updatedTodo = await dueDateResponse.json()
+
+    if (viewMode.value === 'all' && groupFilter.value !== 'ALL') {
+      const groupResponse = await fetch(`${API_BASE_URL}/${updatedTodo.id}/group?groupType=${groupFilter.value}`, {
+        method: 'PUT'
+      })
+
+      if (groupResponse.ok) {
+        updatedTodo = await groupResponse.json()
+      }
+    }
+
     todos.value = [updatedTodo, ...todos.value]
     cancelQuickAdd()
   }
@@ -385,6 +462,20 @@ function showAll(filter = 'ALL') {
 function showGroupBoard() {
   viewMode.value = 'group'
   groupFilter.value = 'ALL'
+}
+
+function showCalendar() {
+  viewMode.value = 'calendar'
+  groupFilter.value = 'ALL'
+}
+
+function setTheme(mode) {
+  themeMode.value = mode
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(THEME_STORAGE_KEY, mode)
+    document.body.dataset.theme = mode
+  }
 }
 
 function startDragging(todo, event) {
@@ -499,7 +590,7 @@ async function updateTodoGroup(todo, groupType) {
         if (recentlyCompletedTodoId.value === updatedTodo.id) {
           recentlyCompletedTodoId.value = null
         }
-      }, 900)
+      }, 1350)
     }
   }
 }
@@ -512,6 +603,16 @@ async function updateTodoDueDate(todo, dueDate) {
   if (response.ok) {
     const updatedTodo = await response.json()
     replaceTodo(updatedTodo)
+
+    if (updatedTodo.completed) {
+      recentlyCompletedTodoId.value = updatedTodo.id
+
+      setTimeout(() => {
+        if (recentlyCompletedTodoId.value === updatedTodo.id) {
+          recentlyCompletedTodoId.value = null
+        }
+      }, 1350)
+    }
   }
 }
 
@@ -534,6 +635,16 @@ async function toggleTodo(todo) {
   if (response.ok) {
     const updatedTodo = await response.json()
     replaceTodo(updatedTodo)
+
+    if (updatedTodo.completed) {
+      recentlyCompletedTodoId.value = updatedTodo.id
+
+      setTimeout(() => {
+        if (recentlyCompletedTodoId.value === updatedTodo.id) {
+          recentlyCompletedTodoId.value = null
+        }
+      }, 1350)
+    }
   }
 }
 
@@ -548,28 +659,22 @@ async function deleteTodo(todo) {
 }
 
 onMounted(() => {
+  setTheme(themeMode.value)
   fetchTodos()
 })
 </script>
 
 <template>
-  <main class="app-shell" @click="editingTodoId !== null && cancelEditing(); quickAddDate !== null && finishQuickAdd()">
+  <main
+    class="app-shell"
+    :class="themeMode === 'light' ? 'theme-light' : 'theme-dark'"
+    @click="editingTodoId !== null && cancelEditing(); quickAddDate !== null && finishQuickAdd(); selectedYearDate !== null && (selectedYearDate = null)"
+  >
     <aside class="sidebar" @click.stop>
       <button type="button" class="brand" @click="showAll()">
-        <p>Vue3 + Spring Boot</p>
+
         <h1>TaskFlow</h1>
       </button>
-
-      <section class="runtime-panel">
-        <div>
-          <span>API</span>
-          <strong>8080</strong>
-        </div>
-        <div>
-          <span>VITE</span>
-          <strong>5174</strong>
-        </div>
-      </section>
 
       <nav class="side-nav">
         <button type="button" :class="{ active: viewMode === 'all' }" @click="showAll()">
@@ -580,7 +685,20 @@ onMounted(() => {
           <span>아이젠하워 매트릭스</span>
           <strong>4</strong>
         </button>
+        <button type="button" :class="{ active: viewMode === 'calendar' }" @click="showCalendar">
+          <span>캘린더</span>
+          <strong>{{ scheduledTodoCount }}</strong>
+        </button>
       </nav>
+
+      <section class="theme-switcher" aria-label="테마 선택">
+        <button type="button" :class="{ active: themeMode === 'dark' }" @click="setTheme('dark')">
+          Dark
+        </button>
+        <button type="button" :class="{ active: themeMode === 'light' }" @click="setTheme('light')">
+          Light
+        </button>
+      </section>
 
       <section class="side-section">
         <h2>그룹 필터</h2>
@@ -628,7 +746,7 @@ onMounted(() => {
     <section class="workspace">
       <header class="workspace-header">
         <div>
-          <p class="eyebrow">{{ viewMode === 'all' ? 'List View' : 'Board View' }}</p>
+          
           <h2>{{ workspaceTitle }}</h2>
         </div>
         <div class="header-tools">
@@ -642,7 +760,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <form class="add-form" @submit.prevent="createTodo">
+      <form v-if="viewMode !== 'calendar'" class="add-form" @submit.prevent="createTodo">
         <input v-model="title" type="text" placeholder="task add ..." />
         <button type="submit">ADD</button>
       </form>
@@ -758,15 +876,22 @@ onMounted(() => {
                   class="calendar-todo-title"
                   :class="[
                     `theme-${groupTheme(todo.groupType)}`,
-                    { completed: todo.completed, dragging: draggedTodoId === todo.id }
+                    {
+                      completed: todo.completed,
+                      completedFlash: recentlyCompletedTodoId === todo.id,
+                      dragging: draggedTodoId === todo.id
+                    }
                   ]"
                   :title="todo.title"
                   draggable="true"
                   @dragstart.stop="startDragging(todo, $event)"
                   @dragend.stop="finishDragging"
-                  @click.stop
+                  @click.stop="toggleTodo(todo)"
                 >
-                  {{ todo.title }}
+                  <span class="calendar-check" :class="{ checked: todo.completed }">
+                    <span aria-hidden="true">✓</span>
+                  </span>
+                  <span class="calendar-title-text">{{ todo.title }}</span>
                 </span>
                 <span v-if="day.count > day.todos.length" class="calendar-more">
                   +{{ day.count - day.todos.length }}
@@ -792,7 +917,169 @@ onMounted(() => {
         </aside>
       </div>
 
-      <div v-else class="group-board" :class="{ dragging: isDragging }">
+      <div v-else-if="viewMode === 'calendar'" class="calendar-page">
+        <section class="calendar-panel calendar-page-panel">
+          <header class="calendar-header">
+            <div>
+              <p class="eyebrow">Schedule</p>
+              <h3>{{ calendarTitle }}</h3>
+            </div>
+            <div class="calendar-header-actions">
+              <div class="calendar-view-toggle">
+                <button type="button" :class="{ active: calendarViewMode === 'month' }" @click="setCalendarViewMode('month')">
+                  월간
+                </button>
+                <button type="button" :class="{ active: calendarViewMode === 'year' }" @click="setCalendarViewMode('year')">
+                  연간
+                </button>
+              </div>
+              <div class="calendar-nav">
+                <button type="button" :aria-label="calendarViewMode === 'year' ? '이전 해' : '이전 달'" @click="moveCalendar(-1)">‹</button>
+                <button type="button" :aria-label="calendarViewMode === 'year' ? '다음 해' : '다음 달'" @click="moveCalendar(1)">›</button>
+              </div>
+            </div>
+          </header>
+
+          <template v-if="calendarViewMode === 'month'">
+            <div class="calendar-weekdays">
+              <span v-for="weekday in WEEKDAYS" :key="weekday">{{ weekday }}</span>
+            </div>
+
+            <div class="calendar-grid month-grid">
+              <div
+                v-for="day in calendarDays"
+                :key="day.value"
+                class="calendar-day"
+                role="button"
+                tabindex="0"
+                :class="{
+                  outside: !day.inCurrentMonth,
+                  today: day.isToday,
+                  dragOver: dragOverDate === day.value
+                }"
+                @click.stop="openQuickAdd(day.value)"
+                @keydown.space.prevent="openQuickAdd(day.value)"
+                @dragover.prevent="dragOverDate = day.value"
+                @dragleave="dragOverDate === day.value && (dragOverDate = null)"
+                @drop.prevent="dropTodoToDate(day.value)"
+              >
+                <div class="calendar-day-header">
+                  <span>{{ day.dayNumber }}</span>
+                  <strong v-if="day.count > 0">{{ day.count }}</strong>
+                </div>
+                <div v-if="day.todos.length > 0" class="calendar-todos">
+                  <span
+                    v-for="todo in day.todos"
+                    :key="todo.id"
+                    class="calendar-todo-title"
+                    :class="[
+                      `theme-${groupTheme(todo.groupType)}`,
+                      {
+                        completed: todo.completed,
+                        completedFlash: recentlyCompletedTodoId === todo.id,
+                        dragging: draggedTodoId === todo.id
+                      }
+                    ]"
+                    :title="todo.title"
+                    draggable="true"
+                    @dragstart.stop="startDragging(todo, $event)"
+                    @dragend.stop="finishDragging"
+                    @click.stop="toggleTodo(todo)"
+                  >
+                    <span class="calendar-check" :class="{ checked: todo.completed }">
+                      <span aria-hidden="true">✓</span>
+                    </span>
+                    <span class="calendar-title-text">{{ todo.title }}</span>
+                  </span>
+                  <span v-if="day.count > day.todos.length" class="calendar-more">
+                    +{{ day.count - day.todos.length }}
+                  </span>
+                </div>
+                <form
+                  v-if="quickAddDate === day.value"
+                  class="calendar-quick-add"
+                  @submit.prevent.stop="createTodoForDate"
+                  @click.stop
+                >
+                  <input
+                    :ref="setQuickAddInput"
+                    v-model="quickAddTitle"
+                    type="text"
+                    placeholder="할 일 추가"
+                    @blur="finishQuickAdd"
+                    @keydown.esc.prevent="cancelQuickAdd"
+                  />
+                </form>
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="year-calendar-grid">
+              <section v-for="month in yearCalendarMonths" :key="month.value" class="year-month">
+                <h4>{{ month.label }}</h4>
+                <div class="year-weekdays">
+                  <span v-for="weekday in WEEKDAYS" :key="weekday">{{ weekday }}</span>
+                </div>
+                <div class="year-days">
+                  <div
+                    v-for="day in month.days"
+                    :key="day.value"
+                    class="year-day"
+                    role="button"
+                    tabindex="0"
+                    :class="[
+                      yearDayDensityClass(day),
+                      {
+                        outside: !day.inCurrentMonth,
+                        today: day.isToday,
+                        selected: selectedYearDate === day.value,
+                        dragOver: dragOverDate === day.value
+                      }
+                    ]"
+                    :title="day.count > 0 ? `${day.value} 할 일 ${day.count}개` : day.value"
+                    @click.stop="selectYearDate(day)"
+                    @keydown.space.prevent="selectYearDate(day)"
+                    @dragover.prevent="dragOverDate = day.value"
+                    @dragleave="dragOverDate === day.value && (dragOverDate = null)"
+                    @drop.prevent="dropTodoToDate(day.value)"
+                  >
+                    <span>{{ day.dayNumber }}</span>
+                    <strong v-if="day.count > 0">{{ day.count }}</strong>
+                    <section v-if="selectedYearDate === day.value" class="year-date-popover" @click.stop>
+                      <header>
+                        <div>
+                          <span>선택 날짜</span>
+                          <strong>{{ selectedYearDate }}</strong>
+                        </div>
+                        <button type="button" aria-label="닫기" @click.stop="selectedYearDate = null">×</button>
+                      </header>
+                      <div class="year-date-todos">
+                        <button
+                          v-for="todo in selectedYearTodos"
+                          :key="todo.id"
+                          type="button"
+                          class="year-date-todo"
+                          :class="[`theme-${groupTheme(todo.groupType)}`, { completed: todo.completed }]"
+                          @click.stop="toggleTodo(todo)"
+                        >
+                          <span class="calendar-check" :class="{ checked: todo.completed }">
+                            <span aria-hidden="true">✓</span>
+                          </span>
+                          <span>{{ todo.title }}</span>
+                          <small>{{ groupLabel(todo.groupType) }}</small>
+                        </button>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </template>
+        </section>
+      </div>
+
+      <div v-else-if="viewMode === 'group'" class="group-board" :class="{ dragging: isDragging }">
         <section
           v-for="group in GROUPS"
           :key="group.value"
@@ -888,8 +1175,13 @@ onMounted(() => {
             </section>
 
             <section v-if="completedTodosByGroup(group.value).length > 0" class="group-todo-section completed-section">
-              <button type="button" class="group-subheader toggle-subheader" @click.stop="toggleCompletedSection(group.value)">
-                <span>{{ isCompletedSectionCollapsed(group.value) ? '완료 보기' : '완료' }}</span>
+              <button
+                type="button"
+                class="group-subheader toggle-subheader"
+                :class="{ collapsed: isCompletedSectionCollapsed(group.value) }"
+                @click.stop="toggleCompletedSection(group.value)"
+              >
+                <span>{{ isCompletedSectionCollapsed(group.value) ? '완료' : '완료' }}</span>
                 <strong>{{ completedTodosByGroup(group.value).length }}</strong>
               </button>
 
