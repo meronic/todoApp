@@ -19,6 +19,7 @@ const DATE_BUCKETS = [
 
 const todos = ref([])
 const title = ref('')
+const searchQuery = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
 const editingTodoId = ref(null)
@@ -41,14 +42,34 @@ let dragPreviewElement = null
 
 const visibleTodos = computed(() => {
   if (groupFilter.value === 'ALL') {
+    return searchedTodos.value
+  }
+
+  return searchedTodos.value.filter((todo) => todo.groupType === groupFilter.value)
+})
+
+const searchTerm = computed(() => searchQuery.value.trim().toLowerCase())
+const searchedTodos = computed(() => {
+  if (!searchTerm.value) {
     return todos.value
   }
 
-  return todos.value.filter((todo) => todo.groupType === groupFilter.value)
+  return todos.value.filter((todo) => todo.title.toLowerCase().includes(searchTerm.value))
 })
-
 const openTodoCount = computed(() => todos.value.filter((todo) => !todo.completed).length)
 const completedTodoCount = computed(() => todos.value.filter((todo) => todo.completed).length)
+const priorityStats = computed(() => {
+  return GROUPS.map((group) => {
+    const groupTodos = todos.value.filter((todo) => todo.groupType === group.value)
+
+    return {
+      ...group,
+      total: groupTodos.length,
+      open: groupTodos.filter((todo) => !todo.completed).length,
+      completed: groupTodos.filter((todo) => todo.completed).length
+    }
+  })
+})
 const workspaceTitle = computed(() => {
   if (viewMode.value === 'group') {
     return '그룹별 할 일'
@@ -192,7 +213,7 @@ function replaceTodo(updatedTodo) {
 }
 
 function todosByGroup(groupType) {
-  return todos.value.filter((todo) => todo.groupType === groupType)
+  return searchedTodos.value.filter((todo) => todo.groupType === groupType)
 }
 
 function activeTodosByGroup(groupType) {
@@ -208,7 +229,7 @@ function activeTodosByGroupAndDateBucket(groupType, bucket) {
 }
 
 function todosByDate(dueDate) {
-  return todos.value.filter((todo) => todo.dueDate === dueDate)
+  return searchedTodos.value.filter((todo) => todo.dueDate === dueDate)
 }
 
 function countByGroup(groupType) {
@@ -575,6 +596,22 @@ onMounted(() => {
           <strong>{{ completedTodoCount }}</strong>
         </div>
       </section>
+
+      <section class="side-section priority-section">
+        <h2>우선순위 통계</h2>
+        <div class="priority-stats">
+          <article
+            v-for="stat in priorityStats"
+            :key="stat.value"
+            class="priority-stat"
+            :class="`theme-${stat.theme}`"
+          >
+            <span>{{ stat.shortLabel }}</span>
+            <strong>{{ stat.open }}</strong>
+            <small>완료 {{ stat.completed }} / 전체 {{ stat.total }}</small>
+          </article>
+        </div>
+      </section>
     </aside>
 
     <section class="workspace">
@@ -583,8 +620,14 @@ onMounted(() => {
           <p class="eyebrow">{{ viewMode === 'all' ? 'List View' : 'Board View' }}</p>
           <h2>{{ workspaceTitle }}</h2>
         </div>
-        <div v-if="viewMode === 'all'" class="active-filter">
-          {{ groupFilter === 'ALL' ? '전체 그룹' : `${visibleTodos.length}개` }}
+        <div class="header-tools">
+          <label class="search-box">
+            <span>검색</span>
+            <input v-model="searchQuery" type="search" placeholder="할 일 제목 검색" />
+          </label>
+          <div v-if="viewMode === 'all'" class="active-filter">
+            {{ groupFilter === 'ALL' ? '전체 그룹' : `${visibleTodos.length}개` }}
+          </div>
         </div>
       </header>
 
@@ -602,7 +645,7 @@ onMounted(() => {
       <div v-else-if="viewMode === 'all'" class="all-layout">
         <ul class="todo-list all-list">
           <li v-if="visibleTodos.length === 0" class="empty-list">
-            아직 등록한 할 일이 없습니다.
+            {{ searchTerm ? '검색 결과가 없습니다.' : '아직 등록한 할 일이 없습니다.' }}
           </li>
           <li
             v-for="todo in visibleTodos"
