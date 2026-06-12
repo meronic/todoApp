@@ -2,10 +2,34 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3c453f #171b18;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #171b18;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid #171b18;
+  border-radius: 999px;
+  background: #3c453f;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #536057;
+}
+
 body {
   margin: 0;
-  background: #eef2ef;
-  color: #18221e;
+  background: #111312;
+  color: #e8ece9;
   font-family: Arial, sans-serif;
 }
 
@@ -818,21 +842,21 @@ select {
 
 @keyframes completed-flash {
   0% {
-    border-color: #22c55e;
-    background: #bbf7d0;
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.42), 0 8px 22px rgba(34, 197, 94, 0.18);
+    border-color: #34d399;
+    background: rgba(16, 185, 129, 0.34);
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.48), 0 8px 22px rgba(0, 0, 0, 0.28);
     transform: translateY(-2px) scale(1.012);
   }
 
   45% {
-    border-color: #16a34a;
-    background: #dcfce7;
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.18), 0 8px 22px rgba(34, 197, 94, 0.16);
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.22);
+    box-shadow: 0 0 0 8px rgba(52, 211, 153, 0.18), 0 8px 22px rgba(0, 0, 0, 0.24);
     transform: translateY(-1px) scale(1.006);
   }
 
   100% {
-    background: #effaf4;
+    background: rgba(32, 54, 43, 0.72);
     box-shadow: inset 0 0 0 1px rgba(47, 155, 109, 0.08);
     transform: translateY(0);
   }
@@ -854,44 +878,44 @@ select {
 
 @keyframes title-complete {
   0% {
-    color: #18221e;
+    color: #e5ebe7;
   }
 
   45% {
-    color: #15803d;
+    color: #34d399;
   }
 
   100% {
-    color: #5f746b;
+    color: #79857e;
   }
 }
 
 .theme-red {
-  --theme-border: #f2b4ad;
-  --theme-bg: #fff2f0;
-  --theme-strong: #c24135;
-  --theme-chip: #fbe1de;
+  --theme-border: #ef4444;
+  --theme-bg: rgba(239, 68, 68, 0.12);
+  --theme-strong: #ff5f66;
+  --theme-chip: rgba(239, 68, 68, 0.22);
 }
 
 .theme-blue {
-  --theme-border: #a9c7f5;
-  --theme-bg: #f0f6ff;
-  --theme-strong: #2563eb;
-  --theme-chip: #dceaff;
+  --theme-border: #3b82f6;
+  --theme-bg: rgba(59, 130, 246, 0.12);
+  --theme-strong: #60a5fa;
+  --theme-chip: rgba(59, 130, 246, 0.22);
 }
 
 .theme-yellow {
-  --theme-border: #e8cf7a;
-  --theme-bg: #fff8df;
-  --theme-strong: #9a6700;
-  --theme-chip: #f8edbf;
+  --theme-border: #f59e0b;
+  --theme-bg: rgba(245, 158, 11, 0.13);
+  --theme-strong: #fbbf24;
+  --theme-chip: rgba(245, 158, 11, 0.24);
 }
 
 .theme-green {
-  --theme-border: #a8d8bd;
-  --theme-bg: #effaf4;
-  --theme-strong: #247d58;
-  --theme-chip: #dcefe4;
+  --theme-border: #10b981;
+  --theme-bg: rgba(16, 185, 129, 0.12);
+  --theme-strong: #34d399;
+  --theme-chip: rgba(16, 185, 129, 0.22);
 }
 
 .group-section.theme-red,
@@ -1062,6 +1086,381 @@ select {
 .delete-button.icon-button:hover {
   background: #f7e2df;
   color: #b42318;
+}
+
+/* Dark dashboard theme */
+.sidebar {
+  border-right-color: #262b28;
+  background: #181b19;
+}
+
+.brand h1,
+.workspace-header h2,
+.calendar-header h3,
+.summary strong,
+.priority-stat strong {
+  color: #f3f6f4;
+}
+
+.brand p,
+.eyebrow,
+.side-section h2,
+.summary span,
+.search-box span,
+.priority-stat small,
+.calendar-weekdays span,
+.date-bucket-header,
+.group-subheader,
+.calendar-more {
+  color: #8b9790;
+}
+
+.message,
+.empty-list,
+.group-empty {
+  color: #9aa59f;
+}
+
+.error {
+  color: #ff7f7f;
+}
+
+.side-nav button,
+.group-filter {
+  color: #d6ddd9;
+}
+
+.side-nav button:hover,
+.group-filter:hover {
+  background: #202521;
+}
+
+.side-nav button.active,
+.group-filter.active,
+.summary div,
+.search-box,
+.active-filter,
+.calendar-panel,
+.empty-list,
+.group-empty {
+  border-color: #2b312d;
+  background: #202421;
+  box-shadow: none;
+}
+
+.side-nav strong,
+.group-filter strong,
+.calendar-day-header strong,
+.date-badge {
+  background: #2a302c;
+  color: #cbd5cf;
+}
+
+.workspace {
+  background: #111312;
+}
+
+.add-form input,
+.edit-form input,
+.search-box input,
+.calendar-quick-add input {
+  border-color: #343b36;
+  background: #1c201d;
+  color: #eef3ef;
+}
+
+.add-form input::placeholder,
+.edit-form input::placeholder,
+.search-box input::placeholder,
+.calendar-quick-add input::placeholder {
+  color: #747f78;
+}
+
+.add-form input:focus,
+.edit-form input:focus,
+.calendar-quick-add input:focus {
+  border-color: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+}
+
+.add-form button,
+.edit-form button {
+  background: #2f9b6d;
+  color: white;
+}
+
+.add-form button:hover,
+.edit-form button:hover {
+  background: #34a875;
+}
+
+.priority-stat {
+  background: rgba(32, 36, 33, 0.9);
+}
+
+.priority-stat small {
+  color: #9aa59f;
+}
+
+.calendar-panel {
+  background: #181b19;
+}
+
+.calendar-nav button {
+  border-color: #343b36;
+  background: #202421;
+  color: #dce5df;
+}
+
+.calendar-nav button:hover {
+  border-color: #34d399;
+  background: #24342c;
+}
+
+.calendar-day {
+  border-color: #2b312d;
+  background: #1f2421;
+  color: #dce5df;
+}
+
+.calendar-day:hover,
+.calendar-day.dragOver {
+  border-color: #34d399;
+  background: #22342b;
+}
+
+.calendar-day.outside {
+  background: #181c19;
+  color: #626c66;
+}
+
+.calendar-day.today {
+  border-color: #34d399;
+  box-shadow: inset 0 0 0 1px #34d399;
+}
+
+.calendar-todo-title {
+  background: #29302b;
+  color: #dce5df;
+}
+
+.group-section.theme-red,
+.group-section.theme-blue,
+.group-section.theme-yellow,
+.group-section.theme-green {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #1d211e;
+}
+
+.group-section.dragOver {
+  border-color: var(--theme-strong);
+  background: #222821;
+  box-shadow: inset 0 0 0 3px var(--theme-strong), 0 0 0 6px var(--theme-chip), 0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.group-board.dragging .group-section {
+  background: #222722;
+}
+
+.date-bucket-header strong,
+.group-subheader strong {
+  background: #2b312d;
+  color: #c7d0ca;
+}
+
+.completed-section {
+  border-top-color: #2b312d;
+}
+
+.todo-item {
+  border-color: #2d342f;
+  background: #202421;
+  box-shadow: none;
+}
+
+.todo-item.editable:hover {
+  border-color: #47524b;
+  background: #252b27;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.todo-item.completedItem {
+  border-color: rgba(52, 211, 153, 0.26);
+  background: rgba(32, 54, 43, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.08);
+}
+
+.todo-item.completedItem:hover {
+  border-color: rgba(52, 211, 153, 0.48);
+  background: rgba(35, 64, 49, 0.82);
+}
+
+.todo-title {
+  color: #e5ebe7;
+}
+
+.completed {
+  color: #79857e;
+}
+
+.check-button {
+  border-color: #6b7670;
+  background: #1a1e1b;
+}
+
+.check-hit-area:hover .check-button {
+  border-color: #34d399;
+  background: #20362b;
+}
+
+.check-button.checked {
+  border-color: #34d399;
+  background: #10b981;
+  color: #07110c;
+}
+
+.group-badge.theme-red,
+.group-badge.theme-blue,
+.group-badge.theme-yellow,
+.group-badge.theme-green,
+.calendar-todo-title.theme-red,
+.calendar-todo-title.theme-blue,
+.calendar-todo-title.theme-yellow,
+.calendar-todo-title.theme-green {
+  background: var(--theme-chip);
+  color: var(--theme-strong);
+}
+
+.secondary-button,
+.delete-button {
+  background: #2b312d;
+  color: #cbd5cf;
+}
+
+.secondary-button:hover,
+.delete-button:hover {
+  background: #363e38;
+}
+
+.icon-button {
+  color: #e58b83;
+}
+
+.icon-button:hover,
+.delete-button.icon-button:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ff7f7f;
+}
+
+.drag-preview {
+  background: #202421;
+  color: #f3f6f4;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+}
+
+/* Dense matrix board layout */
+.group-board {
+  gap: 14px;
+}
+
+.group-section {
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+
+.group-header {
+  padding: 0 0 12px;
+}
+
+.group-header h2 {
+  font-size: 17px;
+}
+
+.group-todo-area {
+  gap: 12px;
+}
+
+.group-todo-section {
+  gap: 7px;
+}
+
+.date-bucket-list {
+  gap: 10px;
+}
+
+.date-bucket-header,
+.group-subheader {
+  padding: 0;
+}
+
+.date-bucket-header {
+  justify-content: flex-start;
+  gap: 7px;
+}
+
+.date-bucket-header strong,
+.group-subheader strong {
+  min-width: 0;
+  padding: 1px 6px;
+}
+
+.group-board .todo-list {
+  gap: 0;
+}
+
+.group-board .todo-item {
+  min-height: 42px;
+  padding: 7px 0;
+  border-width: 0 0 1px;
+  border-color: #2b312d;
+  border-radius: 0;
+  background: transparent;
+}
+
+.group-board .todo-item.editable:hover {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+}
+
+.group-board .todo-item.completedItem {
+  border-color: #252c27;
+  background: transparent;
+}
+
+.group-board .todo-item.completedItem:hover {
+  background: rgba(52, 211, 153, 0.04);
+}
+
+.group-board .todo-content {
+  flex: 1;
+  gap: 8px;
+}
+
+.group-board .check-hit-area {
+  width: 30px;
+  height: 30px;
+  margin: -4px 0 -4px -4px;
+}
+
+.group-board .check-button {
+  width: 20px;
+  height: 20px;
+}
+
+.group-board .todo-actions {
+  gap: 6px;
+}
+
+.group-board .date-badge,
+.group-board .group-badge {
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.group-board .icon-button {
+  width: 28px;
+  height: 28px;
+  font-size: 19px;
 }
 
 @media (max-width: 980px) {
