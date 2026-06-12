@@ -1463,6 +1463,313 @@ select {
   font-size: 19px;
 }
 
+/* DevOps task console polish */
+body {
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: Inter, Arial, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.sidebar {
+  border-right-color: #30363d;
+  background: #010409;
+}
+
+.workspace {
+  background: #0d1117;
+}
+
+.brand h1 {
+  letter-spacing: 0;
+}
+
+.runtime-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.runtime-panel div {
+  padding: 9px 10px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #0d1117;
+}
+
+.runtime-panel span,
+.search-box span,
+.active-filter,
+.priority-stat small,
+.date-bucket-header,
+.group-subheader {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.runtime-panel span {
+  display: block;
+  color: #8b949e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.runtime-panel strong {
+  display: block;
+  margin-top: 4px;
+  color: #58a6ff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 14px;
+}
+
+.brand p,
+.eyebrow,
+.side-section h2,
+.summary span,
+.search-box span,
+.priority-stat small,
+.calendar-weekdays span,
+.date-bucket-header,
+.group-subheader,
+.calendar-more {
+  color: #8b949e;
+}
+
+.brand h1,
+.workspace-header h2,
+.calendar-header h3,
+.summary strong,
+.priority-stat strong {
+  color: #f0f6fc;
+}
+
+.side-nav button,
+.group-filter {
+  border-radius: 8px;
+  color: #c9d1d9;
+}
+
+.side-nav button:hover,
+.group-filter:hover {
+  background: #161b22;
+}
+
+.side-nav button.active,
+.group-filter.active,
+.summary div,
+.search-box,
+.active-filter,
+.calendar-panel,
+.empty-list,
+.group-empty {
+  border-color: #30363d;
+  background: #161b22;
+}
+
+.side-nav strong,
+.group-filter strong,
+.calendar-day-header strong,
+.date-badge,
+.date-bucket-header strong,
+.group-subheader strong {
+  background: #21262d;
+  color: #c9d1d9;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.add-form {
+  max-width: none;
+}
+
+.add-form input,
+.edit-form input,
+.search-box input,
+.calendar-quick-add input {
+  border-color: #30363d;
+  background: #0d1117;
+  color: #f0f6fc;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.add-form input,
+.edit-form input {
+  border-radius: 8px;
+}
+
+.add-form input::placeholder,
+.edit-form input::placeholder,
+.search-box input::placeholder,
+.calendar-quick-add input::placeholder {
+  color: #6e7681;
+}
+
+.add-form input:focus,
+.edit-form input:focus,
+.calendar-quick-add input:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.16);
+}
+
+.add-form button,
+.edit-form button {
+  border: 1px solid #238636;
+  border-radius: 8px;
+  background: #238636;
+  color: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+}
+
+.add-form button:hover,
+.edit-form button:hover {
+  background: #2ea043;
+}
+
+.search-box {
+  border-radius: 8px;
+}
+
+.priority-stat {
+  border-radius: 8px;
+  background: #0d1117;
+}
+
+.calendar-panel,
+.group-section.theme-red,
+.group-section.theme-blue,
+.group-section.theme-yellow,
+.group-section.theme-green {
+  border-color: #30363d;
+  background: #161b22;
+}
+
+.calendar-nav button,
+.calendar-day {
+  border-color: #30363d;
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+.calendar-nav button:hover,
+.calendar-day:hover,
+.calendar-day.dragOver {
+  border-color: #58a6ff;
+  background: #111d2f;
+}
+
+.calendar-day.outside {
+  background: #090c10;
+  color: #484f58;
+}
+
+.calendar-day.today {
+  border-color: #3fb950;
+  box-shadow: inset 0 0 0 1px #3fb950;
+}
+
+.todo-item {
+  border-color: #30363d;
+  background: #161b22;
+  border-radius: 8px;
+}
+
+.todo-item.editable:hover {
+  border-color: #58a6ff;
+  background: #1c2128;
+  box-shadow: 0 8px 24px rgba(1, 4, 9, 0.34);
+}
+
+.group-board .todo-item {
+  border-color: #30363d;
+  background: transparent;
+  border-radius: 0;
+}
+
+.group-board .todo-item.editable:hover {
+  background: rgba(88, 166, 255, 0.07);
+}
+
+.todo-title {
+  color: #c9d1d9;
+}
+
+.completed {
+  color: #6e7681;
+}
+
+.group-badge,
+.date-badge,
+.calendar-todo-title,
+.priority-stat span {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.theme-red {
+  --theme-border: #f85149;
+  --theme-bg: rgba(248, 81, 73, 0.12);
+  --theme-strong: #ff7b72;
+  --theme-chip: rgba(248, 81, 73, 0.2);
+}
+
+.theme-blue {
+  --theme-border: #58a6ff;
+  --theme-bg: rgba(88, 166, 255, 0.12);
+  --theme-strong: #79c0ff;
+  --theme-chip: rgba(88, 166, 255, 0.2);
+}
+
+.theme-yellow {
+  --theme-border: #d29922;
+  --theme-bg: rgba(210, 153, 34, 0.13);
+  --theme-strong: #e3b341;
+  --theme-chip: rgba(210, 153, 34, 0.22);
+}
+
+.theme-green {
+  --theme-border: #3fb950;
+  --theme-bg: rgba(63, 185, 80, 0.12);
+  --theme-strong: #56d364;
+  --theme-chip: rgba(63, 185, 80, 0.2);
+}
+
+.check-button {
+  border-color: #6e7681;
+  background: #0d1117;
+}
+
+.check-hit-area:hover .check-button {
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.12);
+}
+
+.check-button.checked {
+  border-color: #3fb950;
+  background: #238636;
+  color: #ffffff;
+}
+
+.secondary-button,
+.delete-button {
+  background: #21262d;
+  color: #c9d1d9;
+}
+
+.secondary-button:hover,
+.delete-button:hover {
+  background: #30363d;
+}
+
+.drag-preview {
+  border-radius: 8px;
+  background: #161b22;
+  color: #f0f6fc;
+  box-shadow: 0 16px 36px rgba(1, 4, 9, 0.52);
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;

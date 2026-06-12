@@ -560,6 +560,17 @@ onMounted(() => {
         <h1>TaskFlow</h1>
       </button>
 
+      <section class="runtime-panel">
+        <div>
+          <span>API</span>
+          <strong>8080</strong>
+        </div>
+        <div>
+          <span>VITE</span>
+          <strong>5174</strong>
+        </div>
+      </section>
+
       <nav class="side-nav">
         <button type="button" :class="{ active: viewMode === 'all' }" @click="showAll()">
           <span>전체</span>
@@ -622,8 +633,8 @@ onMounted(() => {
         </div>
         <div class="header-tools">
           <label class="search-box">
-            <span>검색</span>
-            <input v-model="searchQuery" type="search" placeholder="할 일 제목 검색" />
+            <span>SEARCH</span>
+            <input v-model="searchQuery" type="search" placeholder="Search tasks..." />
           </label>
           <div v-if="viewMode === 'all'" class="active-filter">
             {{ groupFilter === 'ALL' ? '전체 그룹' : `${visibleTodos.length}개` }}
@@ -632,8 +643,8 @@ onMounted(() => {
       </header>
 
       <form class="add-form" @submit.prevent="createTodo">
-        <input v-model="title" type="text" placeholder="할 일을 입력하세요" />
-        <button type="submit">추가</button>
+        <input v-model="title" type="text" placeholder="task add ..." />
+        <button type="submit">ADD</button>
       </form>
 
       <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
