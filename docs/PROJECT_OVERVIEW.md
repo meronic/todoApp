@@ -1,10 +1,10 @@
-# TaskFlow 구조 문서
+﻿# YourLoop 구조 문서
 
-이 문서는 현재 TaskFlow 프로젝트를 유지보수할 때 빠르게 같이 보기 위한 기준 문서입니다.
+이 문서는 현재 YourLoop 프로젝트를 유지보수할 때 빠르게 같이 보기 위한 기준 문서입니다.
 
 ## 한 줄 요약
 
-TaskFlow는 Spring Boot 백엔드와 Vue 3 프론트엔드가 같은 저장소 안에 분리되어 있는 Todo 관리 웹 서비스입니다.
+YourLoop는 Spring Boot 백엔드와 Vue 3 프론트엔드가 같은 저장소 안에 분리되어 있는 Todo 관리 웹 서비스입니다.
 
 앞으로 화면 개발과 유지보수 기준은 Vue 3 프론트엔드입니다. Thymeleaf 화면과 서버 렌더링 컨트롤러는 제거했고, 새 기능은 Vue 화면과 REST API 기준으로 작업합니다.
 
@@ -24,12 +24,12 @@ TaskFlow는 Spring Boot 백엔드와 Vue 3 프론트엔드가 같은 저장소 �
 ## 최상위 구조
 
 ```text
-TaskFlow/
+YourLoop/
 ├─ pom.xml
 ├─ src/
 │  ├─ main/
-│  │  ├─ java/com/youmh/taskflow/
-│  │  │  ├─ TaskFlowApplication.java
+│  │  ├─ java/com/youmh/yourloop/
+│  │  │  ├─ YourLoopApplication.java
 │  │  │  ├─ config/
 │  │  │  ├─ controller/
 │  │  │  ├─ dto/
@@ -39,7 +39,7 @@ TaskFlow/
 │  │  └─ resources/
 │  │     └─ application.properties
 │  └─ test/
-│     └─ java/com/youmh/taskflow/
+│     └─ java/com/youmh/yourloop/
 ├─ frontend/
 │  ├─ package.json
 │  ├─ vite.config.js
@@ -57,13 +57,13 @@ TaskFlow/
 
 ### 실행 진입점
 
-파일: `src/main/java/com/youmh/taskflow/TaskFlowApplication.java`
+파일: `src/main/java/com/youmh/yourloop/YourLoopApplication.java`
 
 Spring Boot 애플리케이션의 시작점입니다. `main()`에서 `SpringApplication.run()`을 호출합니다.
 
 ### 도메인 엔티티
 
-파일: `src/main/java/com/youmh/taskflow/entity/Todo.java`
+파일: `src/main/java/com/youmh/yourloop/entity/Todo.java`
 
 현재 Todo 데이터 모델입니다.
 
@@ -78,7 +78,7 @@ Todo
 
 ### Repository
 
-파일: `src/main/java/com/youmh/taskflow/repository/TodoRepository.java`
+파일: `src/main/java/com/youmh/yourloop/repository/TodoRepository.java`
 
 `JpaRepository<Todo, Long>`를 상속합니다. 기본 CRUD 기능은 Spring Data JPA가 제공합니다.
 
@@ -86,7 +86,7 @@ Todo
 
 ### Service
 
-파일: `src/main/java/com/youmh/taskflow/service/TodoService.java`
+파일: `src/main/java/com/youmh/yourloop/service/TodoService.java`
 
 Todo 관련 비즈니스 로직이 모여 있습니다.
 
@@ -105,7 +105,7 @@ Todo 관련 비즈니스 로직이 모여 있습니다.
 
 ### REST API Controller
 
-파일: `src/main/java/com/youmh/taskflow/controller/TodoApiController.java`
+파일: `src/main/java/com/youmh/yourloop/controller/TodoApiController.java`
 
 Vue 프론트엔드가 호출하는 JSON API입니다.
 
@@ -121,7 +121,7 @@ Vue 프론트엔드가 호출하는 JSON API입니다.
 
 ### DTO
 
-파일: `src/main/java/com/youmh/taskflow/dto/TodoCreateDto.java`
+파일: `src/main/java/com/youmh/yourloop/dto/TodoCreateDto.java`
 
 Todo 생성 요청용 DTO입니다.
 
@@ -133,8 +133,8 @@ Todo 생성 요청용 DTO입니다.
 
 파일:
 
-- `src/main/java/com/youmh/taskflow/exception/TodoNotFoundException.java`
-- `src/main/java/com/youmh/taskflow/exception/GlobalExceptionHandler.java`
+- `src/main/java/com/youmh/yourloop/exception/TodoNotFoundException.java`
+- `src/main/java/com/youmh/yourloop/exception/GlobalExceptionHandler.java`
 
 없는 Todo id로 토글 또는 삭제를 요청하면 `TodoService`가 `TodoNotFoundException`을 던집니다.
 
@@ -148,7 +148,7 @@ Todo 생성 요청용 DTO입니다.
 
 ### CORS 설정
 
-파일: `src/main/java/com/youmh/taskflow/config/WebConfig.java`
+파일: `src/main/java/com/youmh/yourloop/config/WebConfig.java`
 
 Vue 개발 서버에서 백엔드 API를 호출할 수 있도록 CORS를 허용합니다.
 
@@ -318,7 +318,7 @@ npm run build
 
 ## 테스트 구조
 
-파일: `src/test/java/com/youmh/taskflow/TaskFlowApplicationTests.java`
+파일: `src/test/java/com/youmh/yourloop/YourLoopApplicationTests.java`
 
 현재 테스트는 Spring Boot 통합 테스트입니다.
 
@@ -565,7 +565,7 @@ Todo는 선택적으로 날짜를 가질 수 있습니다.
 
 ## 최근 변경: 로고 이동, 그룹 추가 기본값, 카운트/완료 효과 개선
 
-- 사이드바 상단 `TaskFlow` 로고를 클릭하면 전체 메인 화면으로 이동하도록 변경했습니다.
+- 사이드바 상단 `YourLoop` 로고를 클릭하면 전체 메인 화면으로 이동하도록 변경했습니다.
 - 전체 화면에서 특정 우선순위 그룹 필터를 보고 있을 때 Todo를 추가하면 해당 그룹으로 바로 등록되도록 했습니다.
 - 그룹보드의 그룹별 카운트 숫자를 제목 바로 옆에 배치해 현황을 더 쉽게 볼 수 있게 했습니다.
 - Todo 완료 처리 시 짧은 강조 애니메이션이 나타나도록 추가했습니다.

@@ -1,4 +1,4 @@
-# TaskFlow
+﻿# YourLoop
 
 Spring Boot와 Vue 3로 만든 Todo 관리 웹 서비스입니다.
 
@@ -42,9 +42,9 @@ Todo를 등록하고 완료 처리할 수 있으며, 아이젠하워 방식의 �
 ## 프로젝트 구조
 
 ```text
-TaskFlow/
+YourLoop/
 ├─ src/
-│  ├─ main/java/com/youmh/taskflow/
+│  ├─ main/java/com/youmh/yourloop/
 │  │  ├─ config/
 │  │  ├─ controller/
 │  │  ├─ dto/

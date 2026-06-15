@@ -1,8 +1,8 @@
-package com.youmh.taskflow;
+package com.youmh.yourloop;
 
-import com.youmh.taskflow.entity.Todo;
-import com.youmh.taskflow.entity.TodoGroup;
-import com.youmh.taskflow.repository.TodoRepository;
+import com.youmh.yourloop.entity.Todo;
+import com.youmh.yourloop.entity.TodoGroup;
+import com.youmh.yourloop.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @SpringBootTest
-class TaskFlowApplicationTests {
+class YourLoopApplicationTests {
 
     @Autowired
     private MockMvc mockMvc;
@@ -112,7 +112,7 @@ class TaskFlowApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"new title\"}"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Todo를 찾을 수 없습니다. id=999"));
+                .andExpect(jsonPath("$.message").value("Todo瑜?李얠쓣 ???놁뒿?덈떎. id=999"));
     }
 
     @Test
@@ -179,7 +179,7 @@ class TaskFlowApplicationTests {
     void todoApiReturnsNotFoundWhenToggleTargetDoesNotExist() throws Exception {
         mockMvc.perform(put("/api/todos/{id}/toggle", 999L))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Todo를 찾을 수 없습니다. id=999"));
+                .andExpect(jsonPath("$.message").value("Todo瑜?李얠쓣 ???놁뒿?덈떎. id=999"));
     }
 
     @Test
@@ -198,7 +198,7 @@ class TaskFlowApplicationTests {
     void todoApiReturnsNotFoundWhenDeleteTargetDoesNotExist() throws Exception {
         mockMvc.perform(delete("/api/todos/{id}", 999L))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Todo를 찾을 수 없습니다. id=999"));
+                .andExpect(jsonPath("$.message").value("Todo瑜?李얠쓣 ???놁뒿?덈떎. id=999"));
     }
 
     private Todo saveTodo(String title, boolean completed) {

@@ -1,4 +1,4 @@
-package com.youmh.taskflow.dto;
+package com.youmh.yourloop.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 public class TodoCreateDto {
 
-    @NotBlank(message = "할 일을 입력해주세요.")
+    @NotBlank(message = "???쇱쓣 ?낅젰?댁＜?몄슂.")
     private String title;
 }

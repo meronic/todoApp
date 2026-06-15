@@ -1,4 +1,4 @@
-package com.youmh.taskflow.entity;
+package com.youmh.yourloop.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

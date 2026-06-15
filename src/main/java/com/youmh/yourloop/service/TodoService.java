@@ -1,9 +1,9 @@
-package com.youmh.taskflow.service;
+package com.youmh.yourloop.service;
 
-import com.youmh.taskflow.entity.Todo;
-import com.youmh.taskflow.entity.TodoGroup;
-import com.youmh.taskflow.exception.TodoNotFoundException;
-import com.youmh.taskflow.repository.TodoRepository;
+import com.youmh.yourloop.entity.Todo;
+import com.youmh.yourloop.entity.TodoGroup;
+import com.youmh.yourloop.exception.TodoNotFoundException;
+import com.youmh.yourloop.repository.TodoRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -88,7 +88,7 @@ public class TodoService {
 
     private String normalizeTitle(String title) {
         if (title == null || title.trim().isEmpty()) {
-            throw new IllegalArgumentException("할 일을 입력해주세요.");
+            throw new IllegalArgumentException("???쇱쓣 ?낅젰?댁＜?몄슂.");
         }
 
         return title.trim();

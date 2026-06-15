@@ -1,4 +1,4 @@
-package com.youmh.taskflow.entity;
+package com.youmh.yourloop.entity;
 
 public enum TodoGroup {
     TODAY,

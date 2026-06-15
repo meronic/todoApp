@@ -2,14 +2,17 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/todos'
-const THEME_STORAGE_KEY = 'taskflow-theme'
+const THEME_STORAGE_KEY = 'yourloop-theme'
+const LEGACY_THEME_STORAGE_KEY = 'taskflow-theme'
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
-const savedTheme = typeof window !== 'undefined' ? window.localStorage.getItem(THEME_STORAGE_KEY) : null
+const savedTheme = typeof window !== 'undefined'
+  ? window.localStorage.getItem(THEME_STORAGE_KEY) || window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY)
+  : null
 
 const GROUPS = [
-  { value: 'TODAY', label: '즉시 처리', shortLabel: '즉시', theme: 'red' },
+  { value: 'TODAY', label: '즉시 할 일', shortLabel: '즉시', theme: 'red' },
   { value: 'NEXT', label: '중요한 일', shortLabel: '중요', theme: 'blue' },
-  { value: 'LATER', label: '계획 업무', shortLabel: '계획', theme: 'yellow' },
+  { value: 'LATER', label: '계획한 일', shortLabel: '계획', theme: 'yellow' },
   { value: 'UNCATEGORIZED', label: '미분류', shortLabel: '미분류', theme: 'green' }
 ]
 const DATE_BUCKETS = [
@@ -40,8 +43,11 @@ const quickAddDate = ref(null)
 const quickAddTitle = ref('')
 const quickAddInput = ref(null)
 const quickAddSaving = ref(false)
+const quickAddPosition = ref({ top: 120, left: 320 })
 const recentlyCompletedTodoId = ref(null)
 const selectedYearDate = ref(null)
+const selectedMonthDate = ref(null)
+const selectedMonthPosition = ref({ top: 120, left: 320 })
 const completedHistoryGroupFilter = ref('ALL')
 const themeMode = ref(savedTheme === 'light' ? 'light' : 'dark')
 let dragPreviewElement = null
@@ -74,7 +80,7 @@ const completedHistoryFilterOptions = computed(() => {
       label: '전체 완료',
       shortLabel: '전체',
       theme: 'all',
-      icon: '✓',
+      icon: '?',
       count: completedTodos.length
     },
     ...GROUPS.map((group) => ({
@@ -102,7 +108,7 @@ const workspaceTitle = computed(() => {
   }
 
   if (viewMode.value === 'calendar') {
-    return '캘린더'
+    return calendarTitle.value
   }
 
   if (viewMode.value === 'completed') {
@@ -152,7 +158,14 @@ const yearCalendarMonths = computed(() => {
   }))
 })
 const calendarDays = computed(() => {
-  return buildCalendarDays(currentMonth.value, viewMode.value === 'calendar' ? 6 : 3)
+  return buildCalendarDays(currentMonth.value, 3)
+})
+const selectedMonthTodos = computed(() => {
+  if (!selectedMonthDate.value) {
+    return []
+  }
+
+  return todosByDate(selectedMonthDate.value)
 })
 const selectedYearTodos = computed(() => {
   if (!selectedYearDate.value) {
@@ -370,6 +383,7 @@ function moveMonth(monthOffset) {
 
 function moveCalendar(offset) {
   selectedYearDate.value = null
+  selectedMonthDate.value = null
 
   if (calendarViewMode.value === 'year') {
     currentMonth.value = new Date(currentMonth.value.getFullYear() + offset, 0, 1)
@@ -382,6 +396,7 @@ function moveCalendar(offset) {
 function setCalendarViewMode(mode) {
   calendarViewMode.value = mode
   selectedYearDate.value = null
+  selectedMonthDate.value = null
 }
 
 function formatDateValue(date) {
@@ -472,15 +487,79 @@ function selectYearDate(day) {
   selectedYearDate.value = day.count > 0 ? day.value : null
 }
 
-async function openQuickAdd(dateValue) {
+function selectMonthDate(day, event) {
+  quickAddDate.value = null
+  setMonthPopoverPosition(event)
+  selectedMonthDate.value = day.count > 0 ? day.value : null
+}
+
+function setMonthPopoverPosition(event) {
+  const target = event?.currentTarget
+
+  if (!target?.getBoundingClientRect) {
+    selectedMonthPosition.value = { top: 120, left: 320 }
+    return
+  }
+
+  const rect = target.getBoundingClientRect()
+  const popoverWidth = 320
+  const popoverHeight = 260
+  const padding = 16
+  const rightSideLeft = rect.right + 12
+  const leftSideLeft = rect.left - popoverWidth - 12
+  const left = rightSideLeft + popoverWidth + padding <= window.innerWidth
+    ? rightSideLeft
+    : Math.max(leftSideLeft, padding)
+  const top = Math.min(
+    Math.max(rect.top + rect.height / 2 - popoverHeight / 2, padding),
+    window.innerHeight - popoverHeight - padding
+  )
+
+  selectedMonthPosition.value = {
+    top: Math.max(top, padding),
+    left
+  }
+}
+
+async function openQuickAdd(dateValue, event) {
   if (isDragging.value) {
     return
   }
 
+  selectedMonthDate.value = null
+  setQuickAddPosition(event)
   quickAddDate.value = dateValue
   quickAddTitle.value = ''
   await nextTick()
   quickAddInput.value?.focus()
+}
+
+function setQuickAddPosition(event) {
+  const target = event?.currentTarget
+
+  if (!target?.getBoundingClientRect) {
+    quickAddPosition.value = { top: 120, left: 320 }
+    return
+  }
+
+  const rect = target.getBoundingClientRect()
+  const dialogWidth = 420
+  const dialogHeight = 150
+  const padding = 16
+  const rightSideLeft = rect.right + 12
+  const leftSideLeft = rect.left - dialogWidth - 12
+  const left = rightSideLeft + dialogWidth + padding <= window.innerWidth
+    ? rightSideLeft
+    : Math.max(leftSideLeft, padding)
+  const top = Math.min(
+    Math.max(rect.top + rect.height / 2 - dialogHeight / 2, padding),
+    window.innerHeight - dialogHeight - padding
+  )
+
+  quickAddPosition.value = {
+    top: Math.max(top, padding),
+    left
+  }
 }
 
 function cancelQuickAdd() {
@@ -572,6 +651,7 @@ function setTheme(mode) {
 
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(THEME_STORAGE_KEY, mode)
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY)
     document.body.dataset.theme = mode
   }
 }
@@ -783,12 +863,12 @@ onMounted(() => {
   <main
     class="app-shell"
     :class="themeMode === 'light' ? 'theme-light' : 'theme-dark'"
-    @click="editingTodoId !== null && cancelEditing(); quickAddDate !== null && finishQuickAdd(); selectedYearDate !== null && (selectedYearDate = null)"
+    @click="editingTodoId !== null && cancelEditing(); quickAddDate !== null && finishQuickAdd(); selectedYearDate !== null && (selectedYearDate = null); selectedMonthDate !== null && (selectedMonthDate = null)"
   >
     <aside class="sidebar" @click.stop>
       <button type="button" class="brand" @click="showAll()">
 
-        <h1>TaskFlow</h1>
+        <h1>YourLoop</h1>
       </button>
 
       <nav class="side-nav">
@@ -863,12 +943,26 @@ onMounted(() => {
     </aside>
 
     <section class="workspace">
-      <header class="workspace-header">
+      <header class="workspace-header" :class="{ calendarHeader: viewMode === 'calendar' }">
         <div>
           
           <h2>{{ workspaceTitle }}</h2>
         </div>
-        <div class="header-tools">
+        <div v-if="viewMode === 'calendar'" class="header-tools calendar-title-tools">
+          <div class="calendar-view-toggle">
+            <button type="button" :class="{ active: calendarViewMode === 'month' }" @click="setCalendarViewMode('month')">
+              월간
+            </button>
+            <button type="button" :class="{ active: calendarViewMode === 'year' }" @click="setCalendarViewMode('year')">
+              연간
+            </button>
+          </div>
+          <div class="calendar-nav">
+            <button type="button" :aria-label="calendarViewMode === 'year' ? '이전 해' : '이전 달'" @click="moveCalendar(-1)">?</button>
+            <button type="button" :aria-label="calendarViewMode === 'year' ? '다음 해' : '다음 달'" @click="moveCalendar(1)">?</button>
+          </div>
+        </div>
+        <div v-else class="header-tools">
           <label class="search-box">
             <span>SEARCH</span>
             <input v-model="searchQuery" type="search" placeholder="Search tasks..." />
@@ -930,7 +1024,7 @@ onMounted(() => {
                   @click.stop="toggleTodo(todo)"
                 >
                   <span class="check-button" :class="{ checked: todo.completed }">
-                    <span class="check-mark">✓</span>
+                    <span class="check-mark">?</span>
                   </span>
                 </button>
                 <span class="todo-title" :class="{ completed: todo.completed }">{{ todo.title }}</span>
@@ -957,8 +1051,8 @@ onMounted(() => {
               <h3>{{ calendarTitle }}</h3>
             </div>
             <div class="calendar-nav">
-              <button type="button" aria-label="이전 달" @click="moveMonth(-1)">‹</button>
-              <button type="button" aria-label="다음 달" @click="moveMonth(1)">›</button>
+              <button type="button" aria-label="이전 달" @click="moveMonth(-1)">?</button>
+              <button type="button" aria-label="다음 달" @click="moveMonth(1)">?</button>
             </div>
           </header>
 
@@ -978,8 +1072,8 @@ onMounted(() => {
                 today: day.isToday,
                 dragOver: dragOverDate === day.value
               }"
-              @click.stop="openQuickAdd(day.value)"
-              @keydown.space.prevent="openQuickAdd(day.value)"
+              @click.stop="openQuickAdd(day.value, $event)"
+              @keydown.space.prevent="openQuickAdd(day.value, $event)"
               @dragover.prevent="dragOverDate = day.value"
               @dragleave="dragOverDate === day.value && (dragOverDate = null)"
               @drop.prevent="dropTodoToDate(day.value)"
@@ -1008,29 +1102,19 @@ onMounted(() => {
                   @click.stop="toggleTodo(todo)"
                 >
                   <span class="calendar-check" :class="{ checked: todo.completed }">
-                    <span aria-hidden="true">✓</span>
+                    <span aria-hidden="true">?</span>
                   </span>
                   <span class="calendar-title-text">{{ todo.title }}</span>
                 </span>
-                <span v-if="day.count > day.todos.length" class="calendar-more">
-                  +{{ day.count - day.todos.length }}
-                </span>
+                <button
+                  v-if="day.count > day.todos.length"
+                  type="button"
+                  class="calendar-more"
+                  @click.stop="selectMonthDate(day, $event)"
+                >
+                  ... +{{ day.count - day.todos.length }}
+                </button>
               </div>
-              <form
-                v-if="quickAddDate === day.value"
-                class="calendar-quick-add"
-                @submit.prevent.stop="createTodoForDate"
-                @click.stop
-              >
-                <input
-                  :ref="setQuickAddInput"
-                  v-model="quickAddTitle"
-                  type="text"
-                  placeholder="할 일 추가"
-                  @blur="finishQuickAdd"
-                  @keydown.esc.prevent="cancelQuickAdd"
-                />
-              </form>
             </div>
           </div>
         </aside>
@@ -1038,27 +1122,6 @@ onMounted(() => {
 
       <div v-else-if="viewMode === 'calendar'" class="calendar-page">
         <section class="calendar-panel calendar-page-panel">
-          <header class="calendar-header">
-            <div>
-              <p class="eyebrow">Schedule</p>
-              <h3>{{ calendarTitle }}</h3>
-            </div>
-            <div class="calendar-header-actions">
-              <div class="calendar-view-toggle">
-                <button type="button" :class="{ active: calendarViewMode === 'month' }" @click="setCalendarViewMode('month')">
-                  월간
-                </button>
-                <button type="button" :class="{ active: calendarViewMode === 'year' }" @click="setCalendarViewMode('year')">
-                  연간
-                </button>
-              </div>
-              <div class="calendar-nav">
-                <button type="button" :aria-label="calendarViewMode === 'year' ? '이전 해' : '이전 달'" @click="moveCalendar(-1)">‹</button>
-                <button type="button" :aria-label="calendarViewMode === 'year' ? '다음 해' : '다음 달'" @click="moveCalendar(1)">›</button>
-              </div>
-            </div>
-          </header>
-
           <template v-if="calendarViewMode === 'month'">
             <div class="calendar-weekdays">
               <span v-for="weekday in WEEKDAYS" :key="weekday">{{ weekday }}</span>
@@ -1076,8 +1139,8 @@ onMounted(() => {
                   today: day.isToday,
                   dragOver: dragOverDate === day.value
                 }"
-                @click.stop="openQuickAdd(day.value)"
-                @keydown.space.prevent="openQuickAdd(day.value)"
+                @click.stop="openQuickAdd(day.value, $event)"
+                @keydown.space.prevent="openQuickAdd(day.value, $event)"
                 @dragover.prevent="dragOverDate = day.value"
                 @dragleave="dragOverDate === day.value && (dragOverDate = null)"
                 @drop.prevent="dropTodoToDate(day.value)"
@@ -1106,29 +1169,19 @@ onMounted(() => {
                     @click.stop="toggleTodo(todo)"
                   >
                     <span class="calendar-check" :class="{ checked: todo.completed }">
-                      <span aria-hidden="true">✓</span>
+                      <span aria-hidden="true">?</span>
                     </span>
                     <span class="calendar-title-text">{{ todo.title }}</span>
                   </span>
-                  <span v-if="day.count > day.todos.length" class="calendar-more">
-                    +{{ day.count - day.todos.length }}
-                  </span>
+                  <button
+                    v-if="day.count > day.todos.length"
+                    type="button"
+                    class="calendar-more"
+                    @click.stop="selectMonthDate(day, $event)"
+                  >
+                    ... +{{ day.count - day.todos.length }}
+                  </button>
                 </div>
-                <form
-                  v-if="quickAddDate === day.value"
-                  class="calendar-quick-add"
-                  @submit.prevent.stop="createTodoForDate"
-                  @click.stop
-                >
-                  <input
-                    :ref="setQuickAddInput"
-                    v-model="quickAddTitle"
-                    type="text"
-                    placeholder="할 일 추가"
-                    @blur="finishQuickAdd"
-                    @keydown.esc.prevent="cancelQuickAdd"
-                  />
-                </form>
               </div>
             </div>
           </template>
@@ -1179,11 +1232,14 @@ onMounted(() => {
                           :key="todo.id"
                           type="button"
                           class="year-date-todo"
-                          :class="[`theme-${groupTheme(todo.groupType)}`, { completed: todo.completed }]"
+                          :class="[`theme-${groupTheme(todo.groupType)}`, { completed: todo.completed, dragging: draggedTodoId === todo.id }]"
+                          draggable="true"
+                          @dragstart.stop="startDragging(todo, $event)"
+                          @dragend.stop="finishDragging"
                           @click.stop="toggleTodo(todo)"
                         >
                           <span class="calendar-check" :class="{ checked: todo.completed }">
-                            <span aria-hidden="true">✓</span>
+                            <span aria-hidden="true">?</span>
                           </span>
                           <span>{{ todo.title }}</span>
                           <small>{{ groupLabel(todo.groupType) }}</small>
@@ -1252,7 +1308,7 @@ onMounted(() => {
                       @click.stop="toggleTodo(todo)"
                     >
                       <span class="check-button checked">
-                        <span class="check-mark">✓</span>
+                        <span class="check-mark">?</span>
                       </span>
                     </button>
 
@@ -1317,11 +1373,6 @@ onMounted(() => {
 
           <div v-else class="group-todo-area">
             <section class="group-todo-section">
-              <header class="group-subheader">
-                <span>진행 중</span>
-                <strong>{{ activeTodosByGroup(group.value).length }}</strong>
-              </header>
-
               <p v-if="activeTodosByGroup(group.value).length === 0" class="group-empty compact">
                 진행 중인 할 일이 없습니다.
               </p>
@@ -1372,7 +1423,7 @@ onMounted(() => {
                             @click.stop="toggleTodo(todo)"
                           >
                             <span class="check-button" :class="{ checked: todo.completed }">
-                              <span class="check-mark">✓</span>
+                              <span class="check-mark">?</span>
                             </span>
                           </button>
                           <span class="todo-title" :class="{ completed: todo.completed }">{{ todo.title }}</span>
@@ -1435,7 +1486,7 @@ onMounted(() => {
                         @click.stop="toggleTodo(todo)"
                       >
                         <span class="check-button checked">
-                          <span class="check-mark">✓</span>
+                          <span class="check-mark">?</span>
                         </span>
                       </button>
                       <span class="todo-title completed">{{ todo.title }}</span>
@@ -1454,6 +1505,64 @@ onMounted(() => {
             </section>
           </div>
         </section>
+      </div>
+    </section>
+
+    <form
+      v-if="quickAddDate"
+      class="calendar-add-dialog"
+      :style="{ top: `${quickAddPosition.top}px`, left: `${quickAddPosition.left}px` }"
+      @submit.prevent.stop="createTodoForDate"
+      @click.stop
+    >
+      <header>
+        <div>
+          <span>일정 추가</span>
+          <strong>{{ quickAddDate }}</strong>
+        </div>
+        <button type="button" aria-label="닫기" @mousedown.prevent @click.stop="cancelQuickAdd">×</button>
+      </header>
+      <input
+        :ref="setQuickAddInput"
+        v-model="quickAddTitle"
+        type="text"
+        placeholder="할 일 입력"
+        @blur="finishQuickAdd"
+        @keydown.esc.prevent="cancelQuickAdd"
+      />
+    </form>
+
+    <section
+      v-if="selectedMonthDate"
+      class="calendar-list-dialog"
+      :style="{ top: `${selectedMonthPosition.top}px`, left: `${selectedMonthPosition.left}px` }"
+      @click.stop
+      @mouseleave="!isDragging && (selectedMonthDate = null)"
+    >
+      <header>
+        <div>
+          <span>선택 날짜</span>
+          <strong>{{ selectedMonthDate }}</strong>
+        </div>
+      </header>
+      <div class="year-date-todos">
+        <button
+          v-for="todo in selectedMonthTodos"
+          :key="todo.id"
+          type="button"
+          class="year-date-todo"
+          :class="[`theme-${groupTheme(todo.groupType)}`, { completed: todo.completed, dragging: draggedTodoId === todo.id }]"
+          draggable="true"
+          @dragstart.stop="startDragging(todo, $event)"
+          @dragend.stop="finishDragging"
+          @click.stop="toggleTodo(todo)"
+        >
+          <span class="calendar-check" :class="{ checked: todo.completed }">
+            <span aria-hidden="true">?</span>
+          </span>
+          <span>{{ todo.title }}</span>
+          <small>{{ groupLabel(todo.groupType) }}</small>
+        </button>
       </div>
     </section>
   </main>
